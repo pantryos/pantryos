@@ -175,3 +175,23 @@ func (h *AuthHandler) GetCurrentUser(c *gin.Context) {
 		},
 	})
 }
+
+// GetAvailableAccounts godoc
+// @Summary Get available accounts for registration
+// @Description Retrieve a list of available accounts that users can register for
+// @Tags authentication
+// @Produce json
+// @Success 200 {array} models.Account "List of available accounts"
+// @Failure 500 {object} map[string]interface{} "Internal server error"
+// @Router /auth/accounts [get]
+func (h *AuthHandler) GetAvailableAccounts(c *gin.Context) {
+	// For now, we'll get all accounts. In a real system, you might want to filter by organization
+	// or add pagination for large numbers of accounts
+	accounts, err := h.service.GetAllAccounts()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve accounts: " + err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, accounts)
+}

@@ -21,6 +21,7 @@ type AccountRepository interface {
 	Create(account *models.Account) error
 	GetByID(id int) (*models.Account, error)
 	GetByOrganizationID(organizationID int) ([]models.Account, error)
+	GetAll() ([]models.Account, error)
 	Update(account *models.Account) error
 	Delete(id int) error
 }

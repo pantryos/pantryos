@@ -202,6 +202,17 @@ func (s *Service) GetAccountsByOrganization(organizationID int) ([]models.Accoun
 	return s.accounts.GetByOrganizationID(organizationID)
 }
 
+// GetAllAccounts retrieves all accounts in the system.
+// This method is primarily used for registration purposes to allow users
+// to select which account they want to register for.
+//
+// Returns:
+//   - []models.Account: List of all accounts in the system
+//   - error: Any error that occurred during retrieval
+func (s *Service) GetAllAccounts() ([]models.Account, error) {
+	return s.accounts.GetAll()
+}
+
 // UpdateAccount updates an existing account's information.
 // This method allows modification of account details while
 // maintaining data integrity and business rules.
