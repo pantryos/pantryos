@@ -80,8 +80,8 @@ type InventorySnapshotRepository interface {
 type OrderRepository interface {
 	Create(order *models.Order) error
 	GetByID(id int) (*models.Order, error)
-	GetByOrganizationID(organizationID int) ([]models.Order, error)
-	GetByStatus(organizationID int, status string) ([]models.Order, error)
+	GetByAccountID(accountID int) ([]models.Order, error)
+	GetByStatus(accountID int, status string) ([]models.Order, error)
 	Update(order *models.Order) error
 	Delete(id int) error
 	GetWithItems(id int) (*models.Order, error)
@@ -90,9 +90,8 @@ type OrderRepository interface {
 type OrderRequestRepository interface {
 	Create(request *models.OrderRequest) error
 	GetByID(id int) (*models.OrderRequest, error)
-	GetByOrganizationID(organizationID int) ([]models.OrderRequest, error)
 	GetByAccountID(accountID int) ([]models.OrderRequest, error)
-	GetByStatus(organizationID int, status string) ([]models.OrderRequest, error)
+	GetByStatus(accountID int, status string) ([]models.OrderRequest, error)
 	Update(request *models.OrderRequest) error
 	Delete(id int) error
 	GetWithItems(id int) (*models.OrderRequest, error)
@@ -518,15 +517,15 @@ func (r *orderRepository) GetByID(id int) (*models.Order, error) {
 	return &order, nil
 }
 
-func (r *orderRepository) GetByOrganizationID(organizationID int) ([]models.Order, error) {
+func (r *orderRepository) GetByAccountID(accountID int) ([]models.Order, error) {
 	var orders []models.Order
-	err := r.db.Where("organization_id = ?", organizationID).Order("created_at DESC").Find(&orders).Error
+	err := r.db.Where("account_id = ?", accountID).Order("created_at DESC").Find(&orders).Error
 	return orders, err
 }
 
-func (r *orderRepository) GetByStatus(organizationID int, status string) ([]models.Order, error) {
+func (r *orderRepository) GetByStatus(accountID int, status string) ([]models.Order, error) {
 	var orders []models.Order
-	err := r.db.Where("organization_id = ? AND status = ?", organizationID, status).Order("created_at DESC").Find(&orders).Error
+	err := r.db.Where("account_id = ? AND status = ?", accountID, status).Order("created_at DESC").Find(&orders).Error
 	return orders, err
 }
 
@@ -576,21 +575,15 @@ func (r *orderRequestRepository) GetByID(id int) (*models.OrderRequest, error) {
 	return &request, nil
 }
 
-func (r *orderRequestRepository) GetByOrganizationID(organizationID int) ([]models.OrderRequest, error) {
-	var requests []models.OrderRequest
-	err := r.db.Where("organization_id = ?", organizationID).Order("created_at DESC").Find(&requests).Error
-	return requests, err
-}
-
 func (r *orderRequestRepository) GetByAccountID(accountID int) ([]models.OrderRequest, error) {
 	var requests []models.OrderRequest
 	err := r.db.Where("account_id = ?", accountID).Order("created_at DESC").Find(&requests).Error
 	return requests, err
 }
 
-func (r *orderRequestRepository) GetByStatus(organizationID int, status string) ([]models.OrderRequest, error) {
+func (r *orderRequestRepository) GetByStatus(accountID int, status string) ([]models.OrderRequest, error) {
 	var requests []models.OrderRequest
-	err := r.db.Where("organization_id = ? AND status = ?", organizationID, status).Order("created_at DESC").Find(&requests).Error
+	err := r.db.Where("account_id = ? AND status = ?", accountID, status).Order("created_at DESC").Find(&requests).Error
 	return requests, err
 }
 

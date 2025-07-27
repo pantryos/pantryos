@@ -78,7 +78,7 @@ export interface InventorySnapshot {
 
 export interface Order {
   id: number;
-  organization_id: number;
+  account_id: number;
   status: string;
   order_date: string;
   expected_date: string;
@@ -103,7 +103,6 @@ export interface OrderItem {
 
 export interface OrderRequest {
   id: number;
-  organization_id: number;
   account_id: number;
   status: string;
   priority: string;

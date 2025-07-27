@@ -153,17 +153,17 @@ type Delivery struct {
 // Orders go through various statuses from pending to delivered
 // They can be created by users and approved by managers
 type Order struct {
-	ID             int       `json:"id" gorm:"primaryKey;autoIncrement"`
-	OrganizationID int       `json:"organization_id" gorm:"not null;index"`
-	Status         string    `json:"status" gorm:"not null;default:'pending'"` // pending, approved, ordered, delivered, cancelled
-	OrderDate      time.Time `json:"order_date" gorm:"not null"`
-	ExpectedDate   time.Time `json:"expected_date"`
-	TotalCost      float64   `json:"total_cost" gorm:"not null;default:0"`
-	Notes          string    `json:"notes"`
-	CreatedBy      int       `json:"created_by" gorm:"not null"`
-	ApprovedBy     *int      `json:"approved_by"`
-	CreatedAt      time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt      time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	ID           int       `json:"id" gorm:"primaryKey;autoIncrement"`
+	AccountID    int       `json:"account_id" gorm:"not null;index"`
+	Status       string    `json:"status" gorm:"not null;default:'pending'"` // pending, approved, ordered, delivered, cancelled
+	OrderDate    time.Time `json:"order_date" gorm:"not null"`
+	ExpectedDate time.Time `json:"expected_date"`
+	TotalCost    float64   `json:"total_cost" gorm:"not null;default:0"`
+	Notes        string    `json:"notes"`
+	CreatedBy    int       `json:"created_by" gorm:"not null"`
+	ApprovedBy   *int      `json:"approved_by"`
+	CreatedAt    time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt    time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
 }
 
@@ -186,18 +186,17 @@ type OrderItem struct {
 // This allows for a workflow where users can request items that need manager approval
 // Requests can have different priorities and deadlines
 type OrderRequest struct {
-	ID             int       `json:"id" gorm:"primaryKey;autoIncrement"`
-	OrganizationID int       `json:"organization_id" gorm:"not null;index"`
-	AccountID      int       `json:"account_id" gorm:"not null;index"`
-	Status         string    `json:"status" gorm:"not null;default:'pending'"`  // pending, approved, rejected, fulfilled
-	Priority       string    `json:"priority" gorm:"not null;default:'normal'"` // low, normal, high, urgent
-	RequestDate    time.Time `json:"request_date" gorm:"not null"`
-	NeededBy       time.Time `json:"needed_by"`
-	Notes          string    `json:"notes"`
-	CreatedBy      int       `json:"created_by" gorm:"not null"`
-	ApprovedBy     *int      `json:"approved_by"`
-	CreatedAt      time.Time `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt      time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	ID          int       `json:"id" gorm:"primaryKey;autoIncrement"`
+	AccountID   int       `json:"account_id" gorm:"not null;index"`
+	Status      string    `json:"status" gorm:"not null;default:'pending'"`  // pending, approved, rejected, fulfilled
+	Priority    string    `json:"priority" gorm:"not null;default:'normal'"` // low, normal, high, urgent
+	RequestDate time.Time `json:"request_date" gorm:"not null"`
+	NeededBy    time.Time `json:"needed_by"`
+	Notes       string    `json:"notes"`
+	CreatedBy   int       `json:"created_by" gorm:"not null"`
+	ApprovedBy  *int      `json:"approved_by"`
+	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt   time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
 }
 
