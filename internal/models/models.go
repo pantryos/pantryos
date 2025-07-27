@@ -99,6 +99,7 @@ type InventoryItem struct {
 	MinStockLevel   float64 `json:"min_stock_level" gorm:"default:0"`   // Alert when stock goes below this
 	MaxStockLevel   float64 `json:"max_stock_level" gorm:"default:0"`   // Don't order more than this
 	MinWeeksStock   float64 `json:"min_weeks_stock" gorm:"default:2"`   // Minimum weeks of stock to maintain
+	MaxWeeksStock   float64 `json:"max_weeks_stock" gorm:"default:8"`   // Maximum weeks of stock to maintain
 	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
 }
 

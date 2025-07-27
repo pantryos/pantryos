@@ -50,6 +50,7 @@ export interface InventoryItem {
   min_stock_level: number;
   max_stock_level: number;
   min_weeks_stock: number; // Minimum weeks of stock to maintain
+  max_weeks_stock: number; // Maximum weeks of stock to maintain
   current_stock?: number; // Optional - defaults to 0 if not provided
 }
 
@@ -158,6 +159,7 @@ export interface CreateInventoryItemRequest {
   min_stock_level: number;
   max_stock_level: number;
   min_weeks_stock: number; // Minimum weeks of stock to maintain
+  max_weeks_stock: number; // Maximum weeks of stock to maintain
   current_stock?: number; // Optional - defaults to 0 if not provided
 }
 
