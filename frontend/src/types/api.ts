@@ -49,6 +49,7 @@ export interface InventoryItem {
   preferred_vendor: string;
   min_stock_level: number;
   max_stock_level: number;
+  current_stock?: number; // Optional - defaults to 0 if not provided
 }
 
 export interface MenuItem {
@@ -155,6 +156,7 @@ export interface CreateInventoryItemRequest {
   preferred_vendor: string;
   min_stock_level: number;
   max_stock_level: number;
+  current_stock?: number; // Optional - defaults to 0 if not provided
 }
 
 export interface UpdateInventoryItemRequest extends CreateInventoryItemRequest {

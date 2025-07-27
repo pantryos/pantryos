@@ -22,12 +22,14 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Search as SearchIcon,
-  ArrowBack as ArrowBackIcon
+  ArrowBack as ArrowBackIcon,
+  Analytics as AnalyticsIcon
 } from '@mui/icons-material';
 import { DataGrid, GridColDef, GridActionsCellItem } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import apiService from '../services/api';
 import { InventoryItem, CreateInventoryItemRequest, UpdateInventoryItemRequest } from '../types/api';
+import ItemUsageAnalytics from './ItemUsageAnalytics';
 
 // Inventory management component with full CRUD operations
 // Features: list view, search, add, edit, delete inventory items
@@ -39,6 +41,8 @@ const Inventory: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryItem | null>(null);
   const [error, setError] = useState('');
+  const [analyticsDialogOpen, setAnalyticsDialogOpen] = useState(false);
+  const [selectedItemForAnalytics, setSelectedItemForAnalytics] = useState<InventoryItem | null>(null);
   const [formData, setFormData] = useState<CreateInventoryItemRequest>({
     name: '',
     unit: '',
@@ -136,6 +140,18 @@ const Inventory: React.FC = () => {
     }
   };
 
+  // Handle analytics view
+  const handleAnalyticsClick = (item: InventoryItem) => {
+    setSelectedItemForAnalytics(item);
+    setAnalyticsDialogOpen(true);
+  };
+
+  // Handle analytics dialog close
+  const handleAnalyticsClose = () => {
+    setAnalyticsDialogOpen(false);
+    setSelectedItemForAnalytics(null);
+  };
+
   // Data grid columns configuration
   const columns: GridColDef[] = [
     { field: 'id', headerName: 'ID', width: 70 },
@@ -164,8 +180,13 @@ const Inventory: React.FC = () => {
       field: 'actions',
       type: 'actions',
       headerName: 'Actions',
-      width: 120,
+      width: 180,
       getActions: (params) => [
+        <GridActionsCellItem
+          icon={<AnalyticsIcon />}
+          label="Analytics"
+          onClick={() => handleAnalyticsClick(params.row)}
+        />,
         <GridActionsCellItem
           icon={<EditIcon />}
           label="Edit"
@@ -332,6 +353,36 @@ const Inventory: React.FC = () => {
             <Button onClick={() => setDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleSubmit} variant="contained">
               {editingItem ? 'Update' : 'Create'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Analytics Dialog */}
+        <Dialog 
+          open={analyticsDialogOpen} 
+          onClose={handleAnalyticsClose} 
+          maxWidth="xl" 
+          fullWidth
+          PaperProps={{
+            sx: { height: '90vh' }
+          }}
+        >
+          <DialogTitle>
+            <Typography variant="h5">
+              {selectedItemForAnalytics?.name} - Usage Analytics
+            </Typography>
+          </DialogTitle>
+          <DialogContent dividers>
+            {selectedItemForAnalytics && (
+              <ItemUsageAnalytics 
+                item={selectedItemForAnalytics} 
+                onClose={handleAnalyticsClose}
+              />
+            )}
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={handleAnalyticsClose}>
+              Close
             </Button>
           </DialogActions>
         </Dialog>
