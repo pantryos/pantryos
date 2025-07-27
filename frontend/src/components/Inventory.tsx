@@ -50,6 +50,7 @@ const Inventory: React.FC = () => {
     preferred_vendor: '',
     min_stock_level: 0,
     max_stock_level: 0,
+    min_weeks_stock: 2, // Default to 2 weeks
   });
 
   // Load inventory items on component mount
@@ -95,6 +96,7 @@ const Inventory: React.FC = () => {
       preferred_vendor: '',
       min_stock_level: 0,
       max_stock_level: 0,
+      min_weeks_stock: 2, // Default to 2 weeks
     });
     setDialogOpen(true);
   };
@@ -109,6 +111,7 @@ const Inventory: React.FC = () => {
       preferred_vendor: item.preferred_vendor,
       min_stock_level: item.min_stock_level,
       max_stock_level: item.max_stock_level,
+      min_weeks_stock: item.min_weeks_stock,
     });
     setDialogOpen(true);
   };
@@ -175,6 +178,12 @@ const Inventory: React.FC = () => {
       headerName: 'Max Stock', 
       width: 120,
       valueFormatter: (params: any) => params.value.toString()
+    },
+    { 
+      field: 'min_weeks_stock', 
+      headerName: 'Min Weeks', 
+      width: 120,
+      valueFormatter: (params: any) => `${params.value} weeks`
     },
     {
       field: 'actions',
@@ -346,6 +355,16 @@ const Inventory: React.FC = () => {
                 onChange={(e) => handleInputChange('max_stock_level', parseFloat(e.target.value) || 0)}
                 margin="normal"
                 inputProps={{ min: 0 }}
+              />
+              <TextField
+                fullWidth
+                label="Minimum Weeks of Stock"
+                type="number"
+                value={formData.min_weeks_stock}
+                onChange={(e) => handleInputChange('min_weeks_stock', parseFloat(e.target.value) || 0)}
+                margin="normal"
+                inputProps={{ min: 0, step: 0.5 }}
+                helperText="Number of weeks of stock to maintain as minimum"
               />
             </Box>
           </DialogContent>
