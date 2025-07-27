@@ -7,6 +7,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import Dashboard from './components/Dashboard';
 import Inventory from './components/Inventory';
+import LandingPage from './components/LandingPage';
 
 // Create a custom theme for the application
 const theme = createTheme({
@@ -54,6 +55,7 @@ const App: React.FC = () => {
         <Router>
           <Routes>
             {/* Public routes */}
+            <Route path="/" element={<LandingPage />} />
             <Route 
               path="/login" 
               element={
@@ -89,11 +91,8 @@ const App: React.FC = () => {
               } 
             />
             
-            {/* Default redirect */}
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            
             {/* Catch all route */}
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Router>
       </AuthProvider>
