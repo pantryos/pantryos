@@ -1,0 +1,810 @@
+basePath: /
+definitions:
+  handlers.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  handlers.RegisterRequest:
+    properties:
+      account_id:
+        type: integer
+      email:
+        type: string
+      password:
+        minLength: 6
+        type: string
+    required:
+    - account_id
+    - email
+    - password
+    type: object
+  models.Account:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        description: e.g., "Main Street Coffee Shop"
+        type: string
+      users:
+        items:
+          $ref: '#/definitions/models.User'
+        type: array
+    type: object
+  models.Delivery:
+    properties:
+      account:
+        $ref: '#/definitions/models.Account'
+      account_id:
+        type: integer
+      cost:
+        type: number
+      delivery_date:
+        type: string
+      id:
+        type: integer
+      inventory_item:
+        $ref: '#/definitions/models.InventoryItem'
+      inventory_item_id:
+        type: integer
+      quantity:
+        type: number
+      vendor:
+        description: e.g., "Coffee Supply Co.", "Local Dairy"
+        type: string
+    type: object
+  models.InventoryItem:
+    properties:
+      account:
+        $ref: '#/definitions/models.Account'
+      account_id:
+        type: integer
+      cost_per_unit:
+        type: number
+      id:
+        type: integer
+      name:
+        type: string
+      preferred_vendor:
+        description: Default supplier for this item
+        type: string
+      unit:
+        description: e.g., "kg", "liters", "pieces"
+        type: string
+    type: object
+  models.InventorySnapshot:
+    properties:
+      account:
+        $ref: '#/definitions/models.Account'
+      account_id:
+        type: integer
+      counts:
+        additionalProperties:
+          format: float64
+          type: number
+        description: map[InventoryItemID]quantity
+        type: object
+      id:
+        type: integer
+      timestamp:
+        type: string
+    type: object
+  models.MenuItem:
+    properties:
+      account:
+        $ref: '#/definitions/models.Account'
+      account_id:
+        type: integer
+      id:
+        type: integer
+      ingredients:
+        items:
+          $ref: '#/definitions/models.RecipeIngredient'
+        type: array
+      name:
+        type: string
+      price:
+        type: number
+    type: object
+  models.RecipeIngredient:
+    properties:
+      id:
+        type: integer
+      inventory_item:
+        $ref: '#/definitions/models.InventoryItem'
+      inventory_item_id:
+        type: integer
+      menu_item:
+        $ref: '#/definitions/models.MenuItem'
+      menu_item_id:
+        type: integer
+      quantity:
+        type: number
+    type: object
+  models.User:
+    properties:
+      account:
+        $ref: '#/definitions/models.Account'
+      account_id:
+        type: integer
+      created_at:
+        type: string
+      email:
+        type: string
+      id:
+        type: integer
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: A comprehensive inventory management system for coffee shops and restaurants
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Stok Inventory Management API
+  version: "1.0"
+paths:
+  /api/v1/deliveries:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all deliveries for the authenticated user's account
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of deliveries
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all deliveries
+      tags:
+      - deliveries
+    post:
+      consumes:
+      - application/json
+      description: Log an incoming inventory delivery
+      parameters:
+      - description: Delivery details
+        in: body
+        name: delivery
+        required: true
+        schema:
+          $ref: '#/definitions/models.Delivery'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Delivery logged
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request body
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Log a new delivery
+      tags:
+      - deliveries
+  /api/v1/deliveries/vendor/{vendor}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all deliveries from a specific vendor
+      parameters:
+      - description: Vendor name
+        in: path
+        name: vendor
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of deliveries by vendor
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Vendor parameter required
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get deliveries by vendor
+      tags:
+      - deliveries
+  /api/v1/inventory/items:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all inventory items for the authenticated user's account
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of inventory items
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all inventory items
+      tags:
+      - inventory
+    post:
+      consumes:
+      - application/json
+      description: Create a new inventory item for the authenticated user's account
+      parameters:
+      - description: Inventory item details
+        in: body
+        name: item
+        required: true
+        schema:
+          $ref: '#/definitions/models.InventoryItem'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Inventory item created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request body
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new inventory item
+      tags:
+      - inventory
+  /api/v1/inventory/items/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete an inventory item by ID
+      parameters:
+      - description: Inventory item ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Item deleted successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid item ID
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Access denied
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Item not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Delete inventory item
+      tags:
+      - inventory
+    get:
+      consumes:
+      - application/json
+      description: Retrieve a specific inventory item by ID
+      parameters:
+      - description: Inventory item ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Inventory item details
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid item ID
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Access denied
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Item not found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get inventory item by ID
+      tags:
+      - inventory
+    put:
+      consumes:
+      - application/json
+      description: Update an existing inventory item
+      parameters:
+      - description: Inventory item ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated inventory item details
+        in: body
+        name: item
+        required: true
+        schema:
+          $ref: '#/definitions/models.InventoryItem'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Inventory item updated
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "403":
+          description: Access denied
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Item not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Update inventory item
+      tags:
+      - inventory
+  /api/v1/inventory/vendor/{vendor}:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all inventory items from a specific vendor
+      parameters:
+      - description: Vendor name
+        in: path
+        name: vendor
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of inventory items by vendor
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Vendor parameter required
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get inventory items by vendor
+      tags:
+      - inventory
+  /api/v1/me:
+    get:
+      consumes:
+      - application/json
+      description: Get information about the currently authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: User information
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get current user information
+      tags:
+      - authentication
+  /api/v1/menu/items:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all menu items for the authenticated user's account
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of menu items
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all menu items
+      tags:
+      - menu
+    post:
+      consumes:
+      - application/json
+      description: Create a new menu item for the authenticated user's account
+      parameters:
+      - description: Menu item details
+        in: body
+        name: item
+        required: true
+        schema:
+          $ref: '#/definitions/models.MenuItem'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Menu item created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request body
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create a new menu item
+      tags:
+      - menu
+  /api/v1/snapshots:
+    get:
+      consumes:
+      - application/json
+      description: Retrieve all inventory snapshots for the authenticated user's account
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: List of snapshots
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get all inventory snapshots
+      tags:
+      - snapshots
+    post:
+      consumes:
+      - application/json
+      description: Create a point-in-time inventory count snapshot
+      parameters:
+      - description: Snapshot details
+        in: body
+        name: snapshot
+        required: true
+        schema:
+          $ref: '#/definitions/models.InventorySnapshot'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Snapshot created
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request body
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: User not authenticated
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: User not found
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Create inventory snapshot
+      tags:
+      - snapshots
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user and return JWT token
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request body
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Invalid credentials
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Login user
+      tags:
+      - authentication
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a new user with email, password, and account ID
+      parameters:
+      - description: Registration details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handlers.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: User registered successfully
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Invalid request body
+          schema:
+            additionalProperties: true
+            type: object
+        "409":
+          description: User already exists
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal server error
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Register a new user
+      tags:
+      - authentication
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
