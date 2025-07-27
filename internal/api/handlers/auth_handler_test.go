@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/mnadev/stok/internal/database"
@@ -52,18 +53,38 @@ func TestRegister(t *testing.T) {
 		require.NoError(t, err)
 
 		account := &models.Account{
-			OrganizationID: org.ID,
+			OrganizationID: &org.ID,
 			Name:           "Test Shop",
 			Status:         "active",
 		}
 		err = service.CreateAccount(account)
 		require.NoError(t, err)
 
+		// Create a test user to act as the inviter
+		inviter := &models.User{
+			Email:     "admin@test.com",
+			Password:  "hashedpassword",
+			AccountID: account.ID,
+			Role:      "admin",
+		}
+		err = service.CreateUser(inviter)
+		require.NoError(t, err)
+
+		// Create an invitation for the test user
+		invitation := &models.AccountInvitation{
+			AccountID: account.ID,
+			Email:     "test@example.com",
+			InvitedBy: inviter.ID,
+			Status:    models.AccountInvitationStatusPending,
+			ExpiresAt: time.Now().AddDate(0, 0, 7), // 7 days from now
+		}
+		err = service.CreateInvitation(invitation)
+		require.NoError(t, err)
+
 		// Test registration
 		registerData := map[string]interface{}{
-			"email":      "test@example.com",
-			"password":   "password123",
-			"account_id": account.ID,
+			"email":    "test@example.com",
+			"password": "password123",
 		}
 
 		jsonData, _ := json.Marshal(registerData)
@@ -83,11 +104,10 @@ func TestRegister(t *testing.T) {
 		assert.Equal(t, "User registered successfully", response["message"])
 	})
 
-	t.Run("Registration with Invalid Account ID", func(t *testing.T) {
+	t.Run("Registration without Invitation", func(t *testing.T) {
 		registerData := map[string]interface{}{
-			"email":      "test2@example.com",
-			"password":   "password123",
-			"account_id": 999, // Non-existent account
+			"email":    "test2@example.com",
+			"password": "password123",
 		}
 
 		jsonData, _ := json.Marshal(registerData)
@@ -104,14 +124,13 @@ func TestRegister(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Contains(t, response, "error")
-		assert.Contains(t, response["error"], "invalid account ID")
+		assert.Contains(t, response["error"], "No invitation found")
 	})
 
 	t.Run("Registration with Invalid Email", func(t *testing.T) {
 		registerData := map[string]interface{}{
-			"email":      "invalid-email",
-			"password":   "password123",
-			"account_id": 1,
+			"email":    "invalid-email",
+			"password": "password123",
 		}
 
 		jsonData, _ := json.Marshal(registerData)
@@ -133,9 +152,8 @@ func TestRegister(t *testing.T) {
 
 	t.Run("Registration with Weak Password", func(t *testing.T) {
 		registerData := map[string]interface{}{
-			"email":      "test3@example.com",
-			"password":   "123", // Too short
-			"account_id": 1,
+			"email":    "test3@example.com",
+			"password": "123", // Too short
 		}
 
 		jsonData, _ := json.Marshal(registerData)
@@ -169,7 +187,7 @@ func TestLogin(t *testing.T) {
 		require.NoError(t, err)
 
 		account := &models.Account{
-			OrganizationID: org.ID,
+			OrganizationID: &org.ID,
 			Name:           "Login Test Shop",
 			Status:         "active",
 		}
@@ -245,7 +263,7 @@ func TestLogin(t *testing.T) {
 		require.NoError(t, err)
 
 		account := &models.Account{
-			OrganizationID: org.ID,
+			OrganizationID: &org.ID,
 			Name:           "Login Test Shop 2",
 			Status:         "active",
 		}

@@ -109,6 +109,7 @@ func runMigrations(db *gorm.DB) error {
 		&models.RecipeIngredient{},  // Recipe ingredients linking menu items to inventory
 		&models.InventorySnapshot{}, // Historical inventory snapshots
 		&models.Delivery{},          // Delivery records for inventory replenishment
+		&models.AccountInvitation{}, // User invitations for account access
 	)
 }
 

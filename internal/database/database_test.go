@@ -29,7 +29,7 @@ func TestAccountOperations(t *testing.T) {
 
 	// Test creating an account
 	account := &models.Account{
-		OrganizationID: org.ID,
+		OrganizationID: &org.ID,
 		Name:           "Test Coffee Shop",
 		Location:       "123 Test St",
 		Phone:          "555-1234",
@@ -46,7 +46,49 @@ func TestAccountOperations(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, account.Name, retrievedAccount.Name)
 	assert.Equal(t, account.ID, retrievedAccount.ID)
-	assert.Equal(t, org.ID, retrievedAccount.OrganizationID)
+	assert.Equal(t, org.ID, *retrievedAccount.OrganizationID)
+}
+
+func TestStandaloneAccountOperations(t *testing.T) {
+	db, cleanup := SetupTestDB(t)
+	defer cleanup()
+
+	service := NewService(db)
+
+	// Test creating a standalone account (no organization)
+	account := &models.Account{
+		OrganizationID: nil, // Standalone account
+		Name:           "Joe's Coffee Shop",
+		Location:       "123 Main St",
+		Phone:          "555-0123",
+		Email:          "joe@joescoffee.com",
+		Status:         "active",
+		BusinessType:   models.BusinessTypeSingleLocation,
+	}
+
+	err := service.CreateAccount(account)
+	require.NoError(t, err)
+	assert.NotZero(t, account.ID)
+	assert.Nil(t, account.OrganizationID)
+	assert.Equal(t, models.BusinessTypeSingleLocation, account.BusinessType)
+
+	// Test retrieving the standalone account
+	retrievedAccount, err := service.GetAccount(account.ID)
+	require.NoError(t, err)
+	assert.Equal(t, account.Name, retrievedAccount.Name)
+	assert.Nil(t, retrievedAccount.OrganizationID)
+	assert.Equal(t, models.BusinessTypeSingleLocation, retrievedAccount.BusinessType)
+
+	// Test getting standalone accounts
+	standaloneAccounts, err := service.GetStandaloneAccounts()
+	require.NoError(t, err)
+	assert.Len(t, standaloneAccounts, 1)
+	assert.Equal(t, account.ID, standaloneAccounts[0].ID)
+
+	// Test checking if account is standalone
+	isStandalone, err := service.IsStandaloneAccount(account.ID)
+	require.NoError(t, err)
+	assert.True(t, isStandalone)
 }
 
 func TestUserOperations(t *testing.T) {

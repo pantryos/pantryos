@@ -21,6 +21,7 @@ type AccountRepository interface {
 	Create(account *models.Account) error
 	GetByID(id int) (*models.Account, error)
 	GetByOrganizationID(organizationID int) ([]models.Account, error)
+	GetStandalone() ([]models.Account, error) // Get accounts without organization
 	GetAll() ([]models.Account, error)
 	Update(account *models.Account) error
 	Delete(id int) error
@@ -97,6 +98,17 @@ type OrderRequestRepository interface {
 	GetWithItems(id int) (*models.OrderRequest, error)
 }
 
+type AccountInvitationRepository interface {
+	Create(invitation *models.AccountInvitation) error
+	GetByID(id int) (*models.AccountInvitation, error)
+	GetByEmail(email string) (*models.AccountInvitation, error)
+	GetByAccountID(accountID int) ([]models.AccountInvitation, error)
+	GetPendingByEmail(email string) (*models.AccountInvitation, error)
+	Update(invitation *models.AccountInvitation) error
+	Delete(id int) error
+	DeleteByEmailAndAccount(email string, accountID int) error
+}
+
 // Repository implementations
 type organizationRepository struct {
 	db *DB
@@ -171,6 +183,18 @@ func (r *accountRepository) GetByID(id int) (*models.Account, error) {
 func (r *accountRepository) GetByOrganizationID(organizationID int) ([]models.Account, error) {
 	var accounts []models.Account
 	err := r.db.Where("organization_id = ?", organizationID).Find(&accounts).Error
+	return accounts, err
+}
+
+func (r *accountRepository) GetStandalone() ([]models.Account, error) {
+	var accounts []models.Account
+	err := r.db.Where("organization_id IS NULL").Find(&accounts).Error
+	return accounts, err
+}
+
+func (r *accountRepository) GetAll() ([]models.Account, error) {
+	var accounts []models.Account
+	err := r.db.Find(&accounts).Error
 	return accounts, err
 }
 
@@ -586,6 +610,79 @@ func (r *orderRequestRepository) GetWithItems(id int) (*models.OrderRequest, err
 		return nil, err
 	}
 	return &request, nil
+}
+
+// Account invitation repository implementation
+type accountInvitationRepository struct {
+	db *DB
+}
+
+func NewAccountInvitationRepository(db *DB) AccountInvitationRepository {
+	return &accountInvitationRepository{db: db}
+}
+
+func (r *accountInvitationRepository) Create(invitation *models.AccountInvitation) error {
+	invitation.CreatedAt = time.Now()
+	invitation.UpdatedAt = time.Now()
+	return r.db.Create(invitation).Error
+}
+
+func (r *accountInvitationRepository) GetByID(id int) (*models.AccountInvitation, error) {
+	var invitation models.AccountInvitation
+	// Use Find instead of First to avoid LIMIT clause that ramsql doesn't support
+	err := r.db.Where("id = ?", id).Find(&invitation).Error
+	if err != nil {
+		return nil, err
+	}
+	if invitation.ID == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return &invitation, nil
+}
+
+func (r *accountInvitationRepository) GetByEmail(email string) (*models.AccountInvitation, error) {
+	var invitation models.AccountInvitation
+	// Use Find instead of First to avoid LIMIT clause that ramsql doesn't support
+	err := r.db.Where("email = ?", email).Find(&invitation).Error
+	if err != nil {
+		return nil, err
+	}
+	if invitation.ID == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return &invitation, nil
+}
+
+func (r *accountInvitationRepository) GetByAccountID(accountID int) ([]models.AccountInvitation, error) {
+	var invitations []models.AccountInvitation
+	err := r.db.Where("account_id = ?", accountID).Find(&invitations).Error
+	return invitations, err
+}
+
+func (r *accountInvitationRepository) GetPendingByEmail(email string) (*models.AccountInvitation, error) {
+	var invitation models.AccountInvitation
+	// Use Find instead of First to avoid LIMIT clause that ramsql doesn't support
+	err := r.db.Where("email = ? AND status = ?", email, "pending").Find(&invitation).Error
+	if err != nil {
+		return nil, err
+	}
+	if invitation.ID == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return &invitation, nil
+}
+
+func (r *accountInvitationRepository) Update(invitation *models.AccountInvitation) error {
+	invitation.UpdatedAt = time.Now()
+	return r.db.Save(invitation).Error
+}
+
+func (r *accountInvitationRepository) Delete(id int) error {
+	return r.db.Delete(&models.AccountInvitation{}, id).Error
+}
+
+func (r *accountInvitationRepository) DeleteByEmailAndAccount(email string, accountID int) error {
+	return r.db.Where("email = ? AND account_id = ?", email, accountID).Delete(&models.AccountInvitation{}).Error
 }
 
 // Business logic functions

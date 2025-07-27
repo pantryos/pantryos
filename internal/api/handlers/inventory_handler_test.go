@@ -37,7 +37,7 @@ func setupInventoryTestHandler(t *testing.T) (*gin.Engine, *database.Service, *m
 	require.NoError(t, err)
 
 	account := &models.Account{
-		OrganizationID: org.ID,
+		OrganizationID: &org.ID,
 		Name:           "Test Shop",
 		Status:         "active",
 	}

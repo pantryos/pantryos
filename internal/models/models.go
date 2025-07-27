@@ -50,6 +50,7 @@ type Organization struct {
 	ID          int       `json:"id" gorm:"primaryKey;autoIncrement"`
 	Name        string    `json:"name" gorm:"not null"`
 	Description string    `json:"description"`
+	Type        string    `json:"type" gorm:"not null;default:'multi_location'"` // single_location, multi_location, enterprise
 	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt   time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
@@ -68,17 +69,18 @@ type User struct {
 	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
 }
 
-// Account represents a business location within an organization
-// This could be a coffee shop, restaurant, or any business unit
+// Account represents a business location that can exist independently or within an organization
+// This could be a standalone coffee shop or part of a larger chain
 // Each account has its own inventory, menu items, and users
 type Account struct {
 	ID             int       `json:"id" gorm:"primaryKey;autoIncrement"`
-	OrganizationID int       `json:"organization_id" gorm:"not null;index"`
-	Name           string    `json:"name" gorm:"not null"` // e.g., "Main Street Coffee Shop"
-	Location       string    `json:"location"`             // e.g., "123 Main St, City, State"
+	OrganizationID *int      `json:"organization_id" gorm:"index"` // Optional - null for standalone businesses
+	Name           string    `json:"name" gorm:"not null"`         // e.g., "Main Street Coffee Shop"
+	Location       string    `json:"location"`                     // e.g., "123 Main St, City, State"
 	Phone          string    `json:"phone"`
 	Email          string    `json:"email"`
-	Status         string    `json:"status" gorm:"not null;default:'active'"` // active, inactive, suspended
+	BusinessType   string    `json:"business_type" gorm:"not null;default:'single_location'"` // single_location, multi_location, enterprise
+	Status         string    `json:"status" gorm:"not null;default:'active'"`                 // active, inactive, suspended
 	CreatedAt      time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt      time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
@@ -211,3 +213,35 @@ type RequestItem struct {
 	Priority        string  `json:"priority" gorm:"not null;default:'normal'"`
 	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
 }
+
+// AccountInvitation represents an invitation for a user to join an account
+// This allows account admins to invite users by email without requiring them to know account IDs
+// The invitation system provides better security and user experience
+type AccountInvitation struct {
+	ID         int        `json:"id" gorm:"primaryKey;autoIncrement"`
+	AccountID  int        `json:"account_id" gorm:"not null;index"`
+	Email      string     `json:"email" gorm:"not null;index"`
+	InvitedBy  int        `json:"invited_by" gorm:"not null"`               // User ID who sent the invitation
+	Status     string     `json:"status" gorm:"not null;default:'pending'"` // pending, accepted, expired, revoked
+	InvitedAt  time.Time  `json:"invited_at" gorm:"autoCreateTime"`
+	AcceptedAt *time.Time `json:"accepted_at"`
+	ExpiresAt  time.Time  `json:"expires_at" gorm:"not null"` // Invitation expiration date
+	CreatedAt  time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt  time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
+}
+
+// Invitation status constants
+const (
+	AccountInvitationStatusPending  = "pending"
+	AccountInvitationStatusAccepted = "accepted"
+	AccountInvitationStatusExpired  = "expired"
+	AccountInvitationStatusRevoked  = "revoked"
+)
+
+// Business type constants
+const (
+	BusinessTypeSingleLocation = "single_location" // Standalone business (no organization)
+	BusinessTypeMultiLocation  = "multi_location"  // Multiple locations under one organization
+	BusinessTypeEnterprise     = "enterprise"      // Large enterprise with complex hierarchy
+)

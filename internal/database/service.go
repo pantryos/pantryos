@@ -35,6 +35,8 @@ type Service struct {
 	deliveries DeliveryRepository
 	// inventorySnapshots handles historical inventory level tracking
 	inventorySnapshots InventorySnapshotRepository
+	// accountInvitations handles user invitation management
+	accountInvitations AccountInvitationRepository
 }
 
 // NewService creates a new database service with all repositories initialized.
@@ -55,6 +57,7 @@ func NewService(db *DB) *Service {
 		menuItems:          NewMenuItemRepository(db),
 		deliveries:         NewDeliveryRepository(db),
 		inventorySnapshots: NewInventorySnapshotRepository(db),
+		accountInvitations: NewAccountInvitationRepository(db),
 	}
 }
 
@@ -151,9 +154,8 @@ func (s *Service) GetOrganizationAccounts(organizationID int) ([]models.Account,
 // Accounts represent individual business units (e.g., coffee shops, restaurants)
 // and provide the primary scope for inventory and user operations.
 
-// CreateAccount creates a new account under an organization.
-// This method validates that the parent organization exists before creating
-// the account to maintain referential integrity.
+// CreateAccount creates a new account that can be standalone or under an organization.
+// This method validates the organization if provided and sets appropriate business type.
 //
 // Parameters:
 //   - account: The account data to create
@@ -162,15 +164,28 @@ func (s *Service) GetOrganizationAccounts(organizationID int) ([]models.Account,
 //   - error: Any error that occurred during creation
 //
 // Business rules:
-//   - Parent organization must exist
-//   - Account names should be unique within the organization
+//   - If OrganizationID is provided, parent organization must exist
+//   - If OrganizationID is nil, account is created as standalone
+//   - Business type is automatically set based on organization presence
+//   - Account names should be unique within the organization (if applicable)
 //   - Accounts are created with default status "active"
 func (s *Service) CreateAccount(account *models.Account) error {
-	// Validate that the parent organization exists
-	_, err := s.organizations.GetByID(account.OrganizationID)
-	if err != nil {
-		return errors.New("invalid organization ID")
+	// If OrganizationID is provided, validate that the parent organization exists
+	if account.OrganizationID != nil {
+		_, err := s.organizations.GetByID(*account.OrganizationID)
+		if err != nil {
+			return errors.New("invalid organization ID")
+		}
+		// Set business type based on organization type
+		org, err := s.organizations.GetByID(*account.OrganizationID)
+		if err == nil {
+			account.BusinessType = org.Type
+		}
+	} else {
+		// Standalone account - set as single location
+		account.BusinessType = models.BusinessTypeSingleLocation
 	}
+
 	return s.accounts.Create(account)
 }
 
@@ -211,6 +226,33 @@ func (s *Service) GetAccountsByOrganization(organizationID int) ([]models.Accoun
 //   - error: Any error that occurred during retrieval
 func (s *Service) GetAllAccounts() ([]models.Account, error) {
 	return s.accounts.GetAll()
+}
+
+// GetStandaloneAccounts retrieves all standalone accounts (accounts without an organization).
+// This method is useful for small businesses that don't need organizational hierarchy.
+//
+// Returns:
+//   - []models.Account: List of standalone accounts in the system
+//   - error: Any error that occurred during retrieval
+func (s *Service) GetStandaloneAccounts() ([]models.Account, error) {
+	return s.accounts.GetStandalone()
+}
+
+// IsStandaloneAccount checks if an account is standalone (not part of an organization).
+// This method is useful for determining the business type and access patterns.
+//
+// Parameters:
+//   - accountID: The unique identifier of the account to check
+//
+// Returns:
+//   - bool: True if the account is standalone, false otherwise
+//   - error: Any error that occurred during the check
+func (s *Service) IsStandaloneAccount(accountID int) (bool, error) {
+	account, err := s.accounts.GetByID(accountID)
+	if err != nil {
+		return false, err
+	}
+	return account.OrganizationID == nil, nil
 }
 
 // UpdateAccount updates an existing account's information.
@@ -928,7 +970,7 @@ func (s *Service) ValidateOrganizationAccess(organizationID int, userID int) (bo
 	}
 
 	// Check if the user's account belongs to the organization
-	if account.OrganizationID != organizationID {
+	if account.OrganizationID == nil || *account.OrganizationID != organizationID {
 		return false, errors.New("access denied: user does not belong to this organization")
 	}
 
@@ -951,4 +993,79 @@ func (s *Service) IsOrganizationAdmin(userID int) (bool, error) {
 	}
 
 	return user.Role == "org_admin", nil
+}
+
+// Invitation operations
+// These methods handle user invitation management.
+
+// GetPendingInvitationByEmail retrieves a pending invitation for a given email.
+// This method is used during user registration to validate that the user has been invited.
+//
+// Parameters:
+//   - email: The email address to check for pending invitations
+//
+// Returns:
+//   - *models.AccountInvitation: The pending invitation if found
+//   - error: Any error that occurred during retrieval
+func (s *Service) GetPendingInvitationByEmail(email string) (*models.AccountInvitation, error) {
+	return s.accountInvitations.GetPendingByEmail(email)
+}
+
+// UpdateInvitation updates an existing invitation.
+// This method is used to mark invitations as accepted when users register.
+//
+// Parameters:
+//   - invitation: The invitation data to update
+//
+// Returns:
+//   - error: Any error that occurred during the update
+func (s *Service) UpdateInvitation(invitation *models.AccountInvitation) error {
+	return s.accountInvitations.Update(invitation)
+}
+
+// CreateInvitation creates a new invitation for a user to join an account.
+// This method is used by account admins to invite new users.
+//
+// Parameters:
+//   - invitation: The invitation data to create
+//
+// Returns:
+//   - error: Any error that occurred during creation
+func (s *Service) CreateInvitation(invitation *models.AccountInvitation) error {
+	// Set default expiration to 7 days from now
+	if invitation.ExpiresAt.IsZero() {
+		invitation.ExpiresAt = time.Now().AddDate(0, 0, 7)
+	}
+
+	// Set default status to pending
+	if invitation.Status == "" {
+		invitation.Status = "pending"
+	}
+
+	return s.accountInvitations.Create(invitation)
+}
+
+// GetInvitationsByAccount retrieves all invitations for a specific account.
+// This method is used by account admins to manage invitations.
+//
+// Parameters:
+//   - accountID: The account ID to get invitations for
+//
+// Returns:
+//   - []models.AccountInvitation: List of invitations for the account
+//   - error: Any error that occurred during retrieval
+func (s *Service) GetInvitationsByAccount(accountID int) ([]models.AccountInvitation, error) {
+	return s.accountInvitations.GetByAccountID(accountID)
+}
+
+// DeleteInvitation deletes an invitation.
+// This method is used by account admins to revoke invitations.
+//
+// Parameters:
+//   - id: The invitation ID to delete
+//
+// Returns:
+//   - error: Any error that occurred during deletion
+func (s *Service) DeleteInvitation(id int) error {
+	return s.accountInvitations.Delete(id)
 }

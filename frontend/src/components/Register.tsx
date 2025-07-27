@@ -19,7 +19,6 @@ const Register: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [accountId, setAccountId] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
@@ -37,17 +36,10 @@ const Register: React.FC = () => {
       return;
     }
 
-    // Validate account ID is a number
-    const accountIdNum = parseInt(accountId);
-    if (isNaN(accountIdNum)) {
-      setError('Account ID must be a valid number');
-      return;
-    }
-
     setIsLoading(true);
 
     try {
-      await register(email, password, accountIdNum);
+      await register(email, password);
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Registration failed. Please try again.');
@@ -86,7 +78,7 @@ const Register: React.FC = () => {
             Create Account
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Join Stok to start managing your inventory
+            Join Stok using your invitation. You must have been invited by an account administrator.
           </Typography>
 
           {/* Error Alert */}
@@ -137,19 +129,7 @@ const Register: React.FC = () => {
               onChange={(e) => setConfirmPassword(e.target.value)}
               disabled={isLoading}
             />
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              name="accountId"
-              label="Account ID"
-              type="number"
-              id="accountId"
-              value={accountId}
-              onChange={(e) => setAccountId(e.target.value)}
-              disabled={isLoading}
-              helperText="Enter your business account ID"
-            />
+
             <Button
               type="submit"
               fullWidth

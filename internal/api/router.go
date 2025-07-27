@@ -27,6 +27,11 @@ func SetupRouter(router *gin.Engine, db *database.DB) {
 		// User routes
 		v1.GET("/me", authHandler.GetCurrentUser)
 
+		// Invitation routes (for account admins)
+		v1.GET("/accounts/:account_id/invitations", authHandler.GetInvitationsByAccount)
+		v1.POST("/accounts/:account_id/invitations", authHandler.CreateInvitation)
+		v1.DELETE("/accounts/:account_id/invitations/:invitation_id", authHandler.DeleteInvitation)
+
 		// Inventory item routes
 		v1.GET("/inventory/items", inventoryHandler.GetInventoryItems)
 		v1.POST("/inventory/items", inventoryHandler.CreateInventoryItem)

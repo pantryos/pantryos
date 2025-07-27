@@ -43,7 +43,7 @@ func TestOrganizationStructure(t *testing.T) {
 
 		// Create account under the organization
 		account := &models.Account{
-			OrganizationID: org.ID,
+			OrganizationID: &org.ID,
 			Name:           "Downtown Coffee Shop",
 			Location:       "123 Main St, City, State",
 			Phone:          "555-1234",
@@ -54,7 +54,7 @@ func TestOrganizationStructure(t *testing.T) {
 		err = service.CreateAccount(account)
 		assert.NoError(t, err)
 		assert.NotZero(t, account.ID)
-		assert.Equal(t, org.ID, account.OrganizationID)
+		assert.Equal(t, org.ID, *account.OrganizationID)
 	})
 
 	t.Run("Create User Under Account", func(t *testing.T) {
@@ -72,7 +72,7 @@ func TestOrganizationStructure(t *testing.T) {
 
 		// Create account
 		account := &models.Account{
-			OrganizationID: org.ID,
+			OrganizationID: &org.ID,
 			Name:           "Test Shop",
 		}
 		err = service.CreateAccount(account)
@@ -108,11 +108,11 @@ func TestOrganizationStructure(t *testing.T) {
 
 		// Create multiple accounts
 		account1 := &models.Account{
-			OrganizationID: org.ID,
+			OrganizationID: &org.ID,
 			Name:           "Location 1",
 		}
 		account2 := &models.Account{
-			OrganizationID: org.ID,
+			OrganizationID: &org.ID,
 			Name:           "Location 2",
 		}
 
@@ -150,11 +150,11 @@ func TestOrganizationStructure(t *testing.T) {
 
 		// Create accounts
 		account1 := &models.Account{
-			OrganizationID: org.ID,
+			OrganizationID: &org.ID,
 			Name:           "Shop 1",
 		}
 		account2 := &models.Account{
-			OrganizationID: org.ID,
+			OrganizationID: &org.ID,
 			Name:           "Shop 2",
 		}
 
@@ -208,7 +208,7 @@ func TestOrganizationStructure(t *testing.T) {
 		require.NoError(t, err)
 
 		account := &models.Account{
-			OrganizationID: org.ID,
+			OrganizationID: &org.ID,
 			Name:           "Test Shop",
 		}
 		err = service.CreateAccount(account)
@@ -250,7 +250,7 @@ func TestOrganizationStructure(t *testing.T) {
 		require.NoError(t, err)
 
 		account := &models.Account{
-			OrganizationID: org.ID,
+			OrganizationID: &org.ID,
 			Name:           "Test Shop",
 		}
 		err = service.CreateAccount(account)
@@ -285,8 +285,8 @@ func TestOrganizationStructure(t *testing.T) {
 		require.NoError(t, err)
 
 		// Create accounts
-		account1 := &models.Account{OrganizationID: org1.ID, Name: "Shop 1"}
-		account2 := &models.Account{OrganizationID: org2.ID, Name: "Shop 2"}
+		account1 := &models.Account{OrganizationID: &org1.ID, Name: "Shop 1"}
+		account2 := &models.Account{OrganizationID: &org2.ID, Name: "Shop 2"}
 
 		err = service.CreateAccount(account1)
 		require.NoError(t, err)
@@ -324,7 +324,7 @@ func TestOrganizationStructure(t *testing.T) {
 		require.NoError(t, err)
 
 		account := &models.Account{
-			OrganizationID: org.ID,
+			OrganizationID: &org.ID,
 			Name:           "Test Shop",
 		}
 		err = service.CreateAccount(account)
@@ -373,7 +373,7 @@ func TestOrganizationStructure(t *testing.T) {
 
 		// Create account
 		account := &models.Account{
-			OrganizationID: org.ID,
+			OrganizationID: &org.ID,
 			Name:           "Test Shop",
 		}
 		err = service.CreateAccount(account)
@@ -402,7 +402,7 @@ func TestOrganizationStructure(t *testing.T) {
 
 		// Create a new account to test organization deletion protection
 		account2 := &models.Account{
-			OrganizationID: org.ID,
+			OrganizationID: &org.ID,
 			Name:           "Test Shop 2",
 		}
 		err = service.CreateAccount(account2)
@@ -435,7 +435,7 @@ func TestInventoryWithOrganization(t *testing.T) {
 		require.NoError(t, err)
 
 		account := &models.Account{
-			OrganizationID: org.ID,
+			OrganizationID: &org.ID,
 			Name:           "Test Shop",
 		}
 		err = service.CreateAccount(account)
@@ -465,7 +465,7 @@ func TestInventoryWithOrganization(t *testing.T) {
 		require.NoError(t, err)
 
 		account := &models.Account{
-			OrganizationID: org.ID,
+			OrganizationID: &org.ID,
 			Name:           "Test Shop",
 		}
 		err = service.CreateAccount(account)
@@ -527,7 +527,7 @@ func TestMenuWithOrganization(t *testing.T) {
 		require.NoError(t, err)
 
 		account := &models.Account{
-			OrganizationID: org.ID,
+			OrganizationID: &org.ID,
 			Name:           "Test Shop",
 		}
 		err = service.CreateAccount(account)
@@ -555,7 +555,7 @@ func TestMenuWithOrganization(t *testing.T) {
 		require.NoError(t, err)
 
 		account := &models.Account{
-			OrganizationID: org.ID,
+			OrganizationID: &org.ID,
 			Name:           "Test Shop",
 		}
 		err = service.CreateAccount(account)

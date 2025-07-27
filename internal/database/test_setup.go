@@ -40,6 +40,7 @@ func SetupTestDB(t *testing.T) (*DB, func()) {
 		&models.RecipeIngredient{},
 		&models.InventorySnapshot{},
 		&models.Delivery{},
+		&models.AccountInvitation{},
 	)
 	require.NoError(t, err)
 
@@ -67,12 +68,28 @@ func createTestOrganization(t *testing.T, service *Service, name string) *models
 // createTestAccount creates a test account under an organization
 func createTestAccount(t *testing.T, service *Service, orgID int, name string) *models.Account {
 	account := &models.Account{
-		OrganizationID: orgID,
+		OrganizationID: &orgID,
 		Name:           name,
 		Location:       "123 Test St",
 		Phone:          "555-1234",
 		Email:          name + "@test.com",
 		Status:         "active",
+	}
+	err := service.CreateAccount(account)
+	require.NoError(t, err)
+	return account
+}
+
+// createTestStandaloneAccount creates a test standalone account (no organization)
+func createTestStandaloneAccount(t *testing.T, service *Service, name string) *models.Account {
+	account := &models.Account{
+		OrganizationID: nil, // Standalone account
+		Name:           name,
+		Location:       "123 Test St",
+		Phone:          "555-1234",
+		Email:          name + "@test.com",
+		Status:         "active",
+		BusinessType:   models.BusinessTypeSingleLocation,
 	}
 	err := service.CreateAccount(account)
 	require.NoError(t, err)
