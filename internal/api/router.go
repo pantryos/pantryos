@@ -12,6 +12,7 @@ func SetupRouter(router *gin.Engine, db *database.DB) {
 	// Create handlers
 	authHandler := handlers.NewAuthHandler(db)
 	inventoryHandler := handlers.NewInventoryHandler(db)
+	categoryHandler := handlers.NewCategoryHandler(db)
 
 	// Public routes for authentication
 	authRoutes := router.Group("/auth")
@@ -31,6 +32,16 @@ func SetupRouter(router *gin.Engine, db *database.DB) {
 		v1.GET("/accounts/:account_id/invitations", authHandler.GetInvitationsByAccount)
 		v1.POST("/accounts/:account_id/invitations", authHandler.CreateInvitation)
 		v1.DELETE("/accounts/:account_id/invitations/:invitation_id", authHandler.DeleteInvitation)
+
+		// Category routes
+		v1.GET("/categories", categoryHandler.GetCategories)
+		v1.GET("/categories/active", categoryHandler.GetActiveCategories)
+		v1.POST("/categories", categoryHandler.CreateCategory)
+		v1.GET("/categories/:id", categoryHandler.GetCategory)
+		v1.PUT("/categories/:id", categoryHandler.UpdateCategory)
+		v1.DELETE("/categories/:id", categoryHandler.DeleteCategory)
+		v1.GET("/categories/:id/inventory", categoryHandler.GetInventoryItemsByCategory)
+		v1.GET("/categories/:id/menu", categoryHandler.GetMenuItemsByCategory)
 
 		// Inventory item routes
 		v1.GET("/inventory/items", inventoryHandler.GetInventoryItems)

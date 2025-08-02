@@ -86,6 +86,21 @@ type Account struct {
 	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
 }
 
+// Category represents a classification for inventory items and menu items
+// Categories help organize items for better management and reporting
+// Each category belongs to a specific account for proper scoping
+type Category struct {
+	ID          int       `json:"id" gorm:"primaryKey;autoIncrement"`
+	AccountID   int       `json:"account_id" gorm:"not null;index"`
+	Name        string    `json:"name" gorm:"not null"`
+	Description string    `json:"description"`
+	Color       string    `json:"color" gorm:"default:'#6B7280'"` // Hex color for UI display
+	IsActive    bool      `json:"is_active" gorm:"not null;default:true"`
+	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt   time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
+}
+
 // InventoryItem represents a physical item that can be tracked in inventory
 // Each item belongs to a specific account and has stock level management
 // Items can be ingredients, supplies, or any consumable resource
@@ -100,6 +115,7 @@ type InventoryItem struct {
 	MaxStockLevel   float64 `json:"max_stock_level" gorm:"default:0"`   // Don't order more than this
 	MinWeeksStock   float64 `json:"min_weeks_stock" gorm:"default:2"`   // Minimum weeks of stock to maintain
 	MaxWeeksStock   float64 `json:"max_weeks_stock" gorm:"default:8"`   // Maximum weeks of stock to maintain
+	CategoryID      *int    `json:"category_id" gorm:"index"`           // Optional category assignment
 	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
 }
 
@@ -107,11 +123,12 @@ type InventoryItem struct {
 // Menu items are organized by categories and have pricing information
 // They can be linked to inventory items through recipes
 type MenuItem struct {
-	ID        int     `json:"id" gorm:"primaryKey;autoIncrement"`
-	AccountID int     `json:"account_id" gorm:"not null;index"`
-	Name      string  `json:"name" gorm:"not null"`
-	Price     float64 `json:"price" gorm:"not null;default:0"`
-	Category  string  `json:"category"` // e.g., "drinks", "food", "desserts"
+	ID         int     `json:"id" gorm:"primaryKey;autoIncrement"`
+	AccountID  int     `json:"account_id" gorm:"not null;index"`
+	Name       string  `json:"name" gorm:"not null"`
+	Price      float64 `json:"price" gorm:"not null;default:0"`
+	Category   string  `json:"category"`                 // e.g., "drinks", "food", "desserts"
+	CategoryID *int    `json:"category_id" gorm:"index"` // Optional category assignment
 	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
 }
 

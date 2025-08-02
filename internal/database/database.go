@@ -104,6 +104,7 @@ func runMigrations(db *gorm.DB) error {
 		&models.Organization{},      // Multi-tenant organizations
 		&models.Account{},           // Business locations/accounts within organizations
 		&models.User{},              // Users with roles and permissions
+		&models.Category{},          // Categories for organizing inventory and menu items
 		&models.InventoryItem{},     // Inventory items with stock levels
 		&models.MenuItem{},          // Menu items with categories and pricing
 		&models.RecipeIngredient{},  // Recipe ingredients linking menu items to inventory

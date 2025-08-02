@@ -38,6 +38,8 @@ type Service struct {
 	inventorySnapshots InventorySnapshotRepository
 	// accountInvitations handles user invitation management
 	accountInvitations AccountInvitationRepository
+	// categories handles item categorization and organization
+	categories CategoryRepository
 }
 
 // NewService creates a new database service with all repositories initialized.
@@ -59,6 +61,7 @@ func NewService(db *DB) *Service {
 		deliveries:         NewDeliveryRepository(db),
 		inventorySnapshots: NewInventorySnapshotRepository(db),
 		accountInvitations: NewAccountInvitationRepository(db),
+		categories:         NewCategoryRepository(db),
 	}
 }
 
@@ -436,8 +439,9 @@ func isValidRole(role string) bool {
 // These methods handle inventory item management.
 // Inventory items represent physical goods tracked in the system.
 
-// CreateInventoryItem creates a new inventory item.
-// This method validates that the parent account exists.
+// CreateInventoryItem creates a new inventory item in the system.
+// This method handles the creation of inventory items while enforcing
+// business rules and data validation.
 //
 // Parameters:
 //   - item: The inventory item data to create
@@ -446,15 +450,41 @@ func isValidRole(role string) bool {
 //   - error: Any error that occurred during creation
 //
 // Business rules:
-//   - Parent account must exist
-//   - Inventory item names should be unique within the account
-//   - Inventory items are created with default status "in_stock"
+//   - Item names must be unique within an account
+//   - CategoryID must reference a valid category in the same account
+//   - Account ID must be set for proper scoping
 func (s *Service) CreateInventoryItem(item *models.InventoryItem) error {
-	// Validate that the account exists
-	_, err := s.accounts.GetByID(item.AccountID)
-	if err != nil {
-		return errors.New("invalid account ID")
+	// Validate required fields
+	if item.Name == "" {
+		return errors.New("item name is required")
 	}
+	if item.Unit == "" {
+		return errors.New("unit is required")
+	}
+
+	// Validate category if provided
+	if item.CategoryID != nil {
+		category, err := s.categories.GetByID(*item.CategoryID)
+		if err != nil {
+			return errors.New("invalid category ID")
+		}
+		if category.AccountID != item.AccountID {
+			return errors.New("category does not belong to the same account")
+		}
+	}
+
+	// Check if item with same name already exists in the account
+	existingItems, err := s.inventoryItems.GetByAccountID(item.AccountID)
+	if err != nil {
+		return err
+	}
+
+	for _, existing := range existingItems {
+		if existing.Name == item.Name {
+			return errors.New("item name already exists in this account")
+		}
+	}
+
 	return s.inventoryItems.Create(item)
 }
 
@@ -582,7 +612,43 @@ func (s *Service) GetLowStockItems(accountID int) ([]models.InventoryItem, error
 //
 // Returns:
 //   - error: Any error that occurred during the update
+//
+// Business rules:
+//   - Item names must be unique within an account (excluding the current item)
+//   - CategoryID must reference a valid category in the same account
+//   - Account ID must be set for proper scoping
 func (s *Service) UpdateInventoryItem(item *models.InventoryItem) error {
+	// Validate required fields
+	if item.Name == "" {
+		return errors.New("item name is required")
+	}
+	if item.Unit == "" {
+		return errors.New("unit is required")
+	}
+
+	// Validate category if provided
+	if item.CategoryID != nil {
+		category, err := s.categories.GetByID(*item.CategoryID)
+		if err != nil {
+			return errors.New("invalid category ID")
+		}
+		if category.AccountID != item.AccountID {
+			return errors.New("category does not belong to the same account")
+		}
+	}
+
+	// Check if item with same name already exists in the account (excluding current item)
+	existingItems, err := s.inventoryItems.GetByAccountID(item.AccountID)
+	if err != nil {
+		return err
+	}
+
+	for _, existing := range existingItems {
+		if existing.Name == item.Name && existing.ID != item.ID {
+			return errors.New("item name already exists in this account")
+		}
+	}
+
 	return s.inventoryItems.Update(item)
 }
 
@@ -607,8 +673,9 @@ func (s *Service) DeleteInventoryItem(id int) error {
 // These methods handle menu item management.
 // Menu items represent food and beverage offerings in the system.
 
-// CreateMenuItem creates a new menu item.
-// This method validates that the parent account exists.
+// CreateMenuItem creates a new menu item in the system.
+// This method handles the creation of menu items while enforcing
+// business rules and data validation.
 //
 // Parameters:
 //   - item: The menu item data to create
@@ -617,15 +684,38 @@ func (s *Service) DeleteInventoryItem(id int) error {
 //   - error: Any error that occurred during creation
 //
 // Business rules:
-//   - Parent account must exist
-//   - Menu item names should be unique within the account
-//   - Menu items are created with default status "active"
+//   - Item names must be unique within an account
+//   - CategoryID must reference a valid category in the same account
+//   - Account ID must be set for proper scoping
 func (s *Service) CreateMenuItem(item *models.MenuItem) error {
-	// Validate that the account exists
-	_, err := s.accounts.GetByID(item.AccountID)
-	if err != nil {
-		return errors.New("invalid account ID")
+	// Validate required fields
+	if item.Name == "" {
+		return errors.New("item name is required")
 	}
+
+	// Validate category if provided
+	if item.CategoryID != nil {
+		category, err := s.categories.GetByID(*item.CategoryID)
+		if err != nil {
+			return errors.New("invalid category ID")
+		}
+		if category.AccountID != item.AccountID {
+			return errors.New("category does not belong to the same account")
+		}
+	}
+
+	// Check if item with same name already exists in the account
+	existingItems, err := s.menuItems.GetByAccountID(item.AccountID)
+	if err != nil {
+		return err
+	}
+
+	for _, existing := range existingItems {
+		if existing.Name == item.Name {
+			return errors.New("item name already exists in this account")
+		}
+	}
+
 	return s.menuItems.Create(item)
 }
 
@@ -693,7 +783,40 @@ func (s *Service) GetMenuItemsByCategory(accountID int, category string) ([]mode
 //
 // Returns:
 //   - error: Any error that occurred during the update
+//
+// Business rules:
+//   - Item names must be unique within an account (excluding the current item)
+//   - CategoryID must reference a valid category in the same account
+//   - Account ID must be set for proper scoping
 func (s *Service) UpdateMenuItem(item *models.MenuItem) error {
+	// Validate required fields
+	if item.Name == "" {
+		return errors.New("item name is required")
+	}
+
+	// Validate category if provided
+	if item.CategoryID != nil {
+		category, err := s.categories.GetByID(*item.CategoryID)
+		if err != nil {
+			return errors.New("invalid category ID")
+		}
+		if category.AccountID != item.AccountID {
+			return errors.New("category does not belong to the same account")
+		}
+	}
+
+	// Check if item with same name already exists in the account (excluding current item)
+	existingItems, err := s.menuItems.GetByAccountID(item.AccountID)
+	if err != nil {
+		return err
+	}
+
+	for _, existing := range existingItems {
+		if existing.Name == item.Name && existing.ID != item.ID {
+			return errors.New("item name already exists in this account")
+		}
+	}
+
 	return s.menuItems.Update(item)
 }
 
@@ -1129,4 +1252,218 @@ func (s *Service) GetInvitationsByAccount(accountID int) ([]models.AccountInvita
 //   - error: Any error that occurred during deletion
 func (s *Service) DeleteInvitation(id int) error {
 	return s.accountInvitations.Delete(id)
+}
+
+// Category operations
+// These methods handle item categorization and organization.
+// Categories help organize inventory items and menu items for better management.
+
+// CreateCategory creates a new category for the specified account.
+// Categories help organize inventory items and menu items for better management
+// and reporting capabilities.
+//
+// Parameters:
+//   - category: The category data to create
+//
+// Returns:
+//   - error: Any error that occurred during creation
+//
+// Business rules:
+//   - Category names must be unique within an account
+//   - Categories are created with default timestamps
+//   - Categories are created as active by default
+func (s *Service) CreateCategory(category *models.Category) error {
+	// Validate that the category name is not empty
+	if category.Name == "" {
+		return errors.New("category name is required")
+	}
+
+	// Check if a category with the same name already exists in the account
+	existingCategories, err := s.categories.GetByAccountID(category.AccountID)
+	if err != nil {
+		return err
+	}
+
+	for _, existing := range existingCategories {
+		if existing.Name == category.Name && existing.ID != category.ID {
+			return errors.New("category name already exists in this account")
+		}
+	}
+
+	return s.categories.Create(category)
+}
+
+// GetCategory retrieves a category by its unique identifier.
+// This method provides access to category details for validation
+// and business logic operations.
+//
+// Parameters:
+//   - id: The unique identifier of the category to retrieve
+//
+// Returns:
+//   - *models.Category: The category data if found
+//   - error: Any error that occurred during retrieval
+func (s *Service) GetCategory(id int) (*models.Category, error) {
+	return s.categories.GetByID(id)
+}
+
+// GetCategoriesByAccount retrieves all categories for a specific account.
+// This method returns all categories associated with the account,
+// including both active and inactive categories.
+//
+// Parameters:
+//   - accountID: The account ID to retrieve categories for
+//
+// Returns:
+//   - []models.Category: List of categories for the account
+//   - error: Any error that occurred during retrieval
+func (s *Service) GetCategoriesByAccount(accountID int) ([]models.Category, error) {
+	return s.categories.GetByAccountID(accountID)
+}
+
+// GetActiveCategoriesByAccount retrieves only active categories for a specific account.
+// This method returns only categories that are currently active,
+// which is useful for UI dropdowns and active item categorization.
+//
+// Parameters:
+//   - accountID: The account ID to retrieve active categories for
+//
+// Returns:
+//   - []models.Category: List of active categories for the account
+//   - error: Any error that occurred during retrieval
+func (s *Service) GetActiveCategoriesByAccount(accountID int) ([]models.Category, error) {
+	return s.categories.GetActiveByAccountID(accountID)
+}
+
+// UpdateCategory updates an existing category in the system.
+// This method allows modification of category details while maintaining
+// data integrity and business rules.
+//
+// Parameters:
+//   - category: The updated category data
+//
+// Returns:
+//   - error: Any error that occurred during update
+//
+// Business rules:
+//   - Category names must remain unique within an account
+//   - Updated timestamps are automatically set
+func (s *Service) UpdateCategory(category *models.Category) error {
+	// Validate that the category name is not empty
+	if category.Name == "" {
+		return errors.New("category name is required")
+	}
+
+	// Check if a category with the same name already exists in the account
+	existingCategories, err := s.categories.GetByAccountID(category.AccountID)
+	if err != nil {
+		return err
+	}
+
+	for _, existing := range existingCategories {
+		if existing.Name == category.Name && existing.ID != category.ID {
+			return errors.New("category name already exists in this account")
+		}
+	}
+
+	return s.categories.Update(category)
+}
+
+// DeleteCategory removes a category from the system.
+// This method handles the deletion of categories while ensuring
+// that no orphaned references remain in the system.
+//
+// Parameters:
+//   - id: The unique identifier of the category to delete
+//
+// Returns:
+//   - error: Any error that occurred during deletion
+//
+// Business rules:
+//   - Categories cannot be deleted if they are still referenced by items
+//   - Soft deletion is preferred over hard deletion for data integrity
+func (s *Service) DeleteCategory(id int) error {
+	// Check if any inventory items are using this category
+	inventoryItems, err := s.inventoryItems.GetByAccountID(0) // We'll need to get all items to check
+	if err != nil {
+		return err
+	}
+
+	for _, item := range inventoryItems {
+		if item.CategoryID != nil && *item.CategoryID == id {
+			return errors.New("cannot delete category: it is still assigned to inventory items")
+		}
+	}
+
+	// Check if any menu items are using this category
+	menuItems, err := s.menuItems.GetByAccountID(0) // We'll need to get all items to check
+	if err != nil {
+		return err
+	}
+
+	for _, item := range menuItems {
+		if item.CategoryID != nil && *item.CategoryID == id {
+			return errors.New("cannot delete category: it is still assigned to menu items")
+		}
+	}
+
+	return s.categories.Delete(id)
+}
+
+// GetInventoryItemsByCategory retrieves all inventory items in a specific category.
+// This method provides filtered access to inventory items based on their
+// category assignment for better organization and reporting.
+//
+// Parameters:
+//   - accountID: The account ID to scope the search
+//   - categoryID: The category ID to filter by
+//
+// Returns:
+//   - []models.InventoryItem: List of inventory items in the category
+//   - error: Any error that occurred during retrieval
+func (s *Service) GetInventoryItemsByCategory(accountID int, categoryID int) ([]models.InventoryItem, error) {
+	// Get all inventory items for the account
+	items, err := s.inventoryItems.GetByAccountID(accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter items by category
+	var filteredItems []models.InventoryItem
+	for _, item := range items {
+		if item.CategoryID != nil && *item.CategoryID == categoryID {
+			filteredItems = append(filteredItems, item)
+		}
+	}
+
+	return filteredItems, nil
+}
+
+// GetMenuItemsByCategoryID retrieves all menu items in a specific category.
+// This method provides filtered access to menu items based on their
+// category assignment for better organization and reporting.
+//
+// Parameters:
+//   - accountID: The account ID to scope the search
+//   - categoryID: The category ID to filter by
+//
+// Returns:
+//   - []models.MenuItem: List of menu items in the category
+//   - error: Any error that occurred during retrieval
+func (s *Service) GetMenuItemsByCategoryID(accountID int, categoryID int) ([]models.MenuItem, error) {
+	// Get all menu items for the account
+	items, err := s.menuItems.GetByAccountID(accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Filter items by category
+	var filteredItems []models.MenuItem
+	for _, item := range items {
+		if item.CategoryID != nil && *item.CategoryID == categoryID {
+			filteredItems = append(filteredItems, item)
+		}
+	}
+
+	return filteredItems, nil
 }

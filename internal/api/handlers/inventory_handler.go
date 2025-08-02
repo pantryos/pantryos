@@ -72,7 +72,7 @@ func (h *InventoryHandler) GetInventoryItems(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, itemsWithStock)
+	c.JSON(http.StatusOK, gin.H{"items": itemsWithStock})
 }
 
 // GetLowStockItems retrieves inventory items that are currently low on stock.

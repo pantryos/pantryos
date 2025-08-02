@@ -35,6 +35,7 @@ func SetupTestDB(t *testing.T) (*DB, func()) {
 		&models.Organization{},
 		&models.Account{},
 		&models.User{},
+		&models.Category{},
 		&models.InventoryItem{},
 		&models.MenuItem{},
 		&models.RecipeIngredient{},

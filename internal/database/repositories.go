@@ -108,6 +108,15 @@ type AccountInvitationRepository interface {
 	DeleteByEmailAndAccount(email string, accountID int) error
 }
 
+type CategoryRepository interface {
+	Create(category *models.Category) error
+	GetByID(id int) (*models.Category, error)
+	GetByAccountID(accountID int) ([]models.Category, error)
+	GetActiveByAccountID(accountID int) ([]models.Category, error)
+	Update(category *models.Category) error
+	Delete(id int) error
+}
+
 // Repository implementations
 type organizationRepository struct {
 	db *DB
@@ -676,6 +685,55 @@ func (r *accountInvitationRepository) Delete(id int) error {
 
 func (r *accountInvitationRepository) DeleteByEmailAndAccount(email string, accountID int) error {
 	return r.db.Where("email = ? AND account_id = ?", email, accountID).Delete(&models.AccountInvitation{}).Error
+}
+
+// Category repository implementation
+type categoryRepository struct {
+	db *DB
+}
+
+func NewCategoryRepository(db *DB) CategoryRepository {
+	return &categoryRepository{db: db}
+}
+
+func (r *categoryRepository) Create(category *models.Category) error {
+	category.CreatedAt = time.Now()
+	category.UpdatedAt = time.Now()
+	return r.db.Create(category).Error
+}
+
+func (r *categoryRepository) GetByID(id int) (*models.Category, error) {
+	var category models.Category
+	// Use Find instead of First to avoid LIMIT clause that ramsql doesn't support
+	err := r.db.Where("id = ?", id).Find(&category).Error
+	if err != nil {
+		return nil, err
+	}
+	if category.ID == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return &category, nil
+}
+
+func (r *categoryRepository) GetByAccountID(accountID int) ([]models.Category, error) {
+	var categories []models.Category
+	err := r.db.Where("account_id = ?", accountID).Find(&categories).Error
+	return categories, err
+}
+
+func (r *categoryRepository) GetActiveByAccountID(accountID int) ([]models.Category, error) {
+	var categories []models.Category
+	err := r.db.Where("account_id = ? AND is_active = true", accountID).Find(&categories).Error
+	return categories, err
+}
+
+func (r *categoryRepository) Update(category *models.Category) error {
+	category.UpdatedAt = time.Now()
+	return r.db.Save(category).Error
+}
+
+func (r *categoryRepository) Delete(id int) error {
+	return r.db.Delete(&models.Category{}, id).Error
 }
 
 // Business logic functions

@@ -220,7 +220,7 @@ func TestCreateInventoryItem(t *testing.T) {
 
 	t.Run("Create Inventory Item with Minimal Data", func(t *testing.T) {
 		itemData := map[string]interface{}{
-			"name": "", // Empty name is currently allowed
+			"name": "Test Item", // Provide a valid name
 			"unit": "kg",
 		}
 
@@ -236,7 +236,7 @@ func TestCreateInventoryItem(t *testing.T) {
 
 		assert.Contains(t, response, "item")
 		item := response["item"].(map[string]interface{})
-		assert.Equal(t, "", item["name"]) // Empty name is preserved
+		assert.Equal(t, "Test Item", item["name"]) // Valid name is preserved
 		assert.Equal(t, "kg", item["unit"])
 	})
 }
@@ -755,7 +755,8 @@ func TestInventoryHandlerErrors(t *testing.T) {
 	t.Run("Create Inventory Item with Missing Optional Fields", func(t *testing.T) {
 		itemData := map[string]interface{}{
 			"name": "Test Item",
-			// Missing unit and cost_per_unit - these have default values
+			"unit": "kg", // Provide required unit field
+			// Missing cost_per_unit - this has default value
 		}
 
 		req, w := createAuthenticatedRequest("POST", "/api/v1/inventory/items", itemData, user.ID)
@@ -771,7 +772,7 @@ func TestInventoryHandlerErrors(t *testing.T) {
 		assert.Contains(t, response, "item")
 		item := response["item"].(map[string]interface{})
 		assert.Equal(t, "Test Item", item["name"])
-		assert.Equal(t, "", item["unit"])                  // Default empty string
+		assert.Equal(t, "kg", item["unit"])                // Provided unit
 		assert.Equal(t, float64(0), item["cost_per_unit"]) // Default 0
 	})
 
