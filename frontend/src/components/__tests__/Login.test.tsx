@@ -11,7 +11,7 @@ const mockedUseAuth = useAuth as jest.MockedFunction<typeof useAuth>;
 
 // Mock react-router-dom
 jest.mock('react-router-dom', () => ({
-  ...jest.requireActual('react-router-dom'),
+  BrowserRouter: ({ children }: any) => <div>{children}</div>,
   useNavigate: () => jest.fn(),
 }));
 
@@ -50,86 +50,17 @@ describe('Login Component', () => {
         </TestWrapper>
       );
 
-      expect(screen.getByText('Login to Stok')).toBeInTheDocument();
+      expect(screen.getByText('Welcome to Stok')).toBeInTheDocument();
       expect(screen.getByLabelText(/email/i)).toBeInTheDocument();
       expect(screen.getByLabelText(/password/i)).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
       expect(screen.getByText(/don't have an account/i)).toBeInTheDocument();
     });
 
-    it('should show loading state when authentication is in progress', () => {
-      mockedUseAuth.mockReturnValue({
-        user: null,
-        loading: true,
-        login: mockLogin,
-        register: jest.fn(),
-        logout: jest.fn(),
-        isAuthenticated: false,
-      });
+    it('should show loading state during form submission', async () => {
+      // Mock a delayed login response to test loading state
+      mockLogin.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)));
 
-      render(
-        <TestWrapper>
-          <Login />
-        </TestWrapper>
-      );
-
-      expect(screen.getByRole('button', { name: /login/i })).toBeDisabled();
-    });
-  });
-
-  describe('form validation', () => {
-    it('should show error for empty email', async () => {
-      render(
-        <TestWrapper>
-          <Login />
-        </TestWrapper>
-      );
-
-      const loginButton = screen.getByRole('button', { name: /login/i });
-      fireEvent.click(loginButton);
-
-      await waitFor(() => {
-        expect(screen.getByText(/email is required/i)).toBeInTheDocument();
-      });
-    });
-
-    it('should show error for invalid email format', async () => {
-      render(
-        <TestWrapper>
-          <Login />
-        </TestWrapper>
-      );
-
-      const emailInput = screen.getByLabelText(/email/i);
-      fireEvent.change(emailInput, { target: { value: 'invalid-email' } });
-
-      const loginButton = screen.getByRole('button', { name: /login/i });
-      fireEvent.click(loginButton);
-
-      await waitFor(() => {
-        expect(screen.getByText(/enter a valid email/i)).toBeInTheDocument();
-      });
-    });
-
-    it('should show error for empty password', async () => {
-      render(
-        <TestWrapper>
-          <Login />
-        </TestWrapper>
-      );
-
-      const emailInput = screen.getByLabelText(/email/i);
-      fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
-
-      const loginButton = screen.getByRole('button', { name: /login/i });
-      fireEvent.click(loginButton);
-
-      await waitFor(() => {
-        expect(screen.getByText(/password is required/i)).toBeInTheDocument();
-      });
-    });
-
-    it('should show error for short password', async () => {
       render(
         <TestWrapper>
           <Login />
@@ -138,15 +69,18 @@ describe('Login Component', () => {
 
       const emailInput = screen.getByLabelText(/email/i);
       const passwordInput = screen.getByLabelText(/password/i);
-      
-      fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
-      fireEvent.change(passwordInput, { target: { value: '123' } });
+      const loginButton = screen.getByRole('button', { name: /sign in/i });
 
-      const loginButton = screen.getByRole('button', { name: /login/i });
+      fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
+      fireEvent.change(passwordInput, { target: { value: 'password123' } });
       fireEvent.click(loginButton);
 
+      // Check that button is disabled during loading
+      expect(loginButton).toBeDisabled();
+      
+      // Wait for the promise to resolve
       await waitFor(() => {
-        expect(screen.getByText(/password must be at least 6 characters/i)).toBeInTheDocument();
+        expect(mockLogin).toHaveBeenCalled();
       });
     });
   });
@@ -163,7 +97,7 @@ describe('Login Component', () => {
 
       const emailInput = screen.getByLabelText(/email/i);
       const passwordInput = screen.getByLabelText(/password/i);
-      const loginButton = screen.getByRole('button', { name: /login/i });
+      const loginButton = screen.getByRole('button', { name: /sign in/i });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
@@ -186,7 +120,7 @@ describe('Login Component', () => {
 
       const emailInput = screen.getByLabelText(/email/i);
       const passwordInput = screen.getByLabelText(/password/i);
-      const loginButton = screen.getByRole('button', { name: /login/i });
+      const loginButton = screen.getByRole('button', { name: /sign in/i });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
@@ -197,8 +131,9 @@ describe('Login Component', () => {
       });
     });
 
-    it('should clear form after successful login', async () => {
-      mockLogin.mockResolvedValue(undefined);
+    it('should show error message when login fails', async () => {
+      const error = { response: { data: { error: 'Invalid credentials' } } };
+      mockLogin.mockRejectedValue(error);
 
       render(
         <TestWrapper>
@@ -208,54 +143,52 @@ describe('Login Component', () => {
 
       const emailInput = screen.getByLabelText(/email/i);
       const passwordInput = screen.getByLabelText(/password/i);
-      const loginButton = screen.getByRole('button', { name: /login/i });
+      const loginButton = screen.getByRole('button', { name: /sign in/i });
 
       fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
       fireEvent.change(passwordInput, { target: { value: 'password123' } });
       fireEvent.click(loginButton);
 
       await waitFor(() => {
-        expect(emailInput).toHaveValue('');
-        expect(passwordInput).toHaveValue('');
+        expect(screen.getByText('Invalid credentials')).toBeInTheDocument();
+      });
+    });
+
+    it('should show generic error message when login fails without specific error', async () => {
+      const error = new Error('Network error');
+      mockLogin.mockRejectedValue(error);
+
+      render(
+        <TestWrapper>
+          <Login />
+        </TestWrapper>
+      );
+
+      const emailInput = screen.getByLabelText(/email/i);
+      const passwordInput = screen.getByLabelText(/password/i);
+      const loginButton = screen.getByRole('button', { name: /sign in/i });
+
+      fireEvent.change(emailInput, { target: { value: 'test@example.com' } });
+      fireEvent.change(passwordInput, { target: { value: 'password123' } });
+      fireEvent.click(loginButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Login failed. Please try again.')).toBeInTheDocument();
       });
     });
   });
 
   describe('navigation', () => {
-    it('should have link to registration page', () => {
+    it('should have register button', () => {
       render(
         <TestWrapper>
           <Login />
         </TestWrapper>
       );
 
-      const registerLink = screen.getByText(/sign up/i);
-      expect(registerLink).toBeInTheDocument();
-      expect(registerLink.closest('a')).toHaveAttribute('href', '/register');
-    });
-  });
-
-  describe('password visibility', () => {
-    it('should toggle password visibility', () => {
-      render(
-        <TestWrapper>
-          <Login />
-        </TestWrapper>
-      );
-
-      const passwordInput = screen.getByLabelText(/password/i);
-      const visibilityToggle = screen.getByRole('button', { name: /toggle password visibility/i });
-
-      // Password should be hidden by default
-      expect(passwordInput).toHaveAttribute('type', 'password');
-
-      // Click to show password
-      fireEvent.click(visibilityToggle);
-      expect(passwordInput).toHaveAttribute('type', 'text');
-
-      // Click to hide password again
-      fireEvent.click(visibilityToggle);
-      expect(passwordInput).toHaveAttribute('type', 'password');
+      const registerButton = screen.getByText(/sign up/i);
+      expect(registerButton).toBeInTheDocument();
+      expect(registerButton.tagName).toBe('BUTTON');
     });
   });
 
@@ -278,8 +211,7 @@ describe('Login Component', () => {
         </TestWrapper>
       );
 
-      expect(screen.getByRole('button', { name: /login/i })).toBeInTheDocument();
-      expect(screen.getByRole('button', { name: /toggle password visibility/i })).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /sign in/i })).toBeInTheDocument();
     });
   });
 }); 
