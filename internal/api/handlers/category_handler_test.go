@@ -17,7 +17,7 @@ import (
 
 func TestCategoryHandler_CreateCategory(t *testing.T) {
 	// Setup test database
-	db, cleanup := database.SetupTestDB(t)
+	db, cleanup := database.SetupTestDBLegacy(t)
 	defer cleanup()
 
 	service := database.NewService(db)
@@ -87,7 +87,7 @@ func TestCategoryHandler_CreateCategory(t *testing.T) {
 
 func TestCategoryHandler_GetCategories(t *testing.T) {
 	// Setup test database
-	db, cleanup := database.SetupTestDB(t)
+	db, cleanup := database.SetupTestDBLegacy(t)
 	defer cleanup()
 
 	service := database.NewService(db)
@@ -164,7 +164,7 @@ func TestCategoryHandler_GetCategories(t *testing.T) {
 
 func TestCategoryHandler_CreateInventoryItemWithCategory(t *testing.T) {
 	// Setup test database
-	db, cleanup := database.SetupTestDB(t)
+	db, cleanup := database.SetupTestDBLegacy(t)
 	defer cleanup()
 
 	service := database.NewService(db)

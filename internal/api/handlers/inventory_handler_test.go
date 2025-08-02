@@ -17,13 +17,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func setupInventoryTestHandler(t *testing.T) (*gin.Engine, *database.Service, *models.User, *models.Account) {
+func setupInventoryTestHandler(t *testing.T) (*gin.Engine, *database.Service, *models.User, *models.Account, func()) {
 	// Set Gin to test mode
 	gin.SetMode(gin.TestMode)
 
 	// Create test database
-	db, cleanup := database.SetupTestDB(t)
-	defer cleanup()
+	db, cleanup := database.SetupTestDBLegacy(t)
 
 	// Create service
 	service := database.NewService(db)
@@ -112,7 +111,7 @@ func setupInventoryTestHandler(t *testing.T) (*gin.Engine, *database.Service, *m
 		}
 	}
 
-	return router, service, user, account
+	return router, service, user, account, cleanup
 }
 
 // Helper function to create authenticated request
@@ -140,7 +139,8 @@ func createAuthenticatedRequest(method, path string, body interface{}, userID in
 // Test Inventory Items
 
 func TestGetInventoryItems(t *testing.T) {
-	router, service, user, _ := setupInventoryTestHandler(t)
+	router, service, user, _, cleanup := setupInventoryTestHandler(t)
+	defer cleanup()
 
 	t.Run("Get Empty Inventory Items", func(t *testing.T) {
 		req, w := createAuthenticatedRequest("GET", "/api/v1/inventory/items", nil, user.ID)
@@ -189,7 +189,8 @@ func TestGetInventoryItems(t *testing.T) {
 }
 
 func TestCreateInventoryItem(t *testing.T) {
-	router, _, user, _ := setupInventoryTestHandler(t)
+	router, _, user, _, cleanup := setupInventoryTestHandler(t)
+	defer cleanup()
 
 	t.Run("Create Valid Inventory Item", func(t *testing.T) {
 		itemData := map[string]interface{}{
@@ -242,7 +243,8 @@ func TestCreateInventoryItem(t *testing.T) {
 }
 
 func TestGetInventoryItem(t *testing.T) {
-	router, service, user, _ := setupInventoryTestHandler(t)
+	router, service, user, _, cleanup := setupInventoryTestHandler(t)
+	defer cleanup()
 
 	t.Run("Get Existing Inventory Item", func(t *testing.T) {
 		// Create test inventory item
@@ -305,7 +307,8 @@ func TestGetInventoryItem(t *testing.T) {
 }
 
 func TestUpdateInventoryItem(t *testing.T) {
-	router, service, user, _ := setupInventoryTestHandler(t)
+	router, service, user, _, cleanup := setupInventoryTestHandler(t)
+	defer cleanup()
 
 	t.Run("Update Existing Inventory Item", func(t *testing.T) {
 		// Create test inventory item
@@ -348,7 +351,8 @@ func TestUpdateInventoryItem(t *testing.T) {
 }
 
 func TestDeleteInventoryItem(t *testing.T) {
-	router, service, user, _ := setupInventoryTestHandler(t)
+	router, service, user, _, cleanup := setupInventoryTestHandler(t)
+	defer cleanup()
 
 	t.Run("Delete Existing Inventory Item", func(t *testing.T) {
 		// Create test inventory item
@@ -382,7 +386,8 @@ func TestDeleteInventoryItem(t *testing.T) {
 // Test Menu Items
 
 func TestGetMenuItems(t *testing.T) {
-	router, service, user, _ := setupInventoryTestHandler(t)
+	router, service, user, _, cleanup := setupInventoryTestHandler(t)
+	defer cleanup()
 
 	t.Run("Get Empty Menu Items", func(t *testing.T) {
 		req, w := createAuthenticatedRequest("GET", "/api/v1/menu/items", nil, user.ID)
@@ -428,7 +433,8 @@ func TestGetMenuItems(t *testing.T) {
 }
 
 func TestCreateMenuItem(t *testing.T) {
-	router, _, user, _ := setupInventoryTestHandler(t)
+	router, _, user, _, cleanup := setupInventoryTestHandler(t)
+	defer cleanup()
 
 	t.Run("Create Valid Menu Item", func(t *testing.T) {
 		itemData := map[string]interface{}{
@@ -458,7 +464,8 @@ func TestCreateMenuItem(t *testing.T) {
 // Test Deliveries
 
 func TestLogDelivery(t *testing.T) {
-	router, service, user, _ := setupInventoryTestHandler(t)
+	router, service, user, _, cleanup := setupInventoryTestHandler(t)
+	defer cleanup()
 
 	t.Run("Log Valid Delivery", func(t *testing.T) {
 		// Create test inventory item first
@@ -498,7 +505,8 @@ func TestLogDelivery(t *testing.T) {
 }
 
 func TestGetDeliveries(t *testing.T) {
-	router, service, user, _ := setupInventoryTestHandler(t)
+	router, service, user, _, cleanup := setupInventoryTestHandler(t)
+	defer cleanup()
 
 	t.Run("Get Empty Deliveries", func(t *testing.T) {
 		req, w := createAuthenticatedRequest("GET", "/api/v1/deliveries", nil, user.ID)
@@ -556,7 +564,8 @@ func TestGetDeliveries(t *testing.T) {
 }
 
 func TestGetDeliveriesByVendor(t *testing.T) {
-	router, service, user, _ := setupInventoryTestHandler(t)
+	router, service, user, _, cleanup := setupInventoryTestHandler(t)
+	defer cleanup()
 
 	t.Run("Get Deliveries by Vendor", func(t *testing.T) {
 		// Create test inventory item first
@@ -598,7 +607,8 @@ func TestGetDeliveriesByVendor(t *testing.T) {
 }
 
 func TestCreateInventorySnapshot(t *testing.T) {
-	router, service, user, _ := setupInventoryTestHandler(t)
+	router, service, user, _, cleanup := setupInventoryTestHandler(t)
+	defer cleanup()
 
 	t.Run("Create Valid Inventory Snapshot", func(t *testing.T) {
 		// Create test inventory item first
@@ -635,7 +645,8 @@ func TestCreateInventorySnapshot(t *testing.T) {
 }
 
 func TestGetInventorySnapshots(t *testing.T) {
-	router, service, user, _ := setupInventoryTestHandler(t)
+	router, service, user, _, cleanup := setupInventoryTestHandler(t)
+	defer cleanup()
 
 	t.Run("Get Empty Inventory Snapshots", func(t *testing.T) {
 		req, w := createAuthenticatedRequest("GET", "/api/v1/snapshots", nil, user.ID)
@@ -691,7 +702,8 @@ func TestGetInventorySnapshots(t *testing.T) {
 }
 
 func TestGetInventoryItemsByVendor(t *testing.T) {
-	router, service, user, _ := setupInventoryTestHandler(t)
+	router, service, user, _, cleanup := setupInventoryTestHandler(t)
+	defer cleanup()
 
 	t.Run("Get Inventory Items by Vendor", func(t *testing.T) {
 		// Create test inventory items
@@ -750,7 +762,8 @@ func TestGetInventoryItemsByVendor(t *testing.T) {
 // Test Error Cases
 
 func TestInventoryHandlerErrors(t *testing.T) {
-	router, _, user, _ := setupInventoryTestHandler(t)
+	router, _, user, _, cleanup := setupInventoryTestHandler(t)
+	defer cleanup()
 
 	t.Run("Create Inventory Item with Missing Optional Fields", func(t *testing.T) {
 		itemData := map[string]interface{}{

@@ -16,13 +16,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func setupTestHandler(t *testing.T) (*gin.Engine, *database.Service) {
+func setupTestHandler(t *testing.T) (*gin.Engine, *database.Service, func()) {
 	// Set Gin to test mode
 	gin.SetMode(gin.TestMode)
 
 	// Create test database
-	db, cleanup := database.SetupTestDB(t)
-	defer cleanup()
+	db, cleanup := database.SetupTestDBLegacy(t)
 
 	// Create service
 	service := database.NewService(db)
@@ -37,11 +36,12 @@ func setupTestHandler(t *testing.T) (*gin.Engine, *database.Service) {
 	router.POST("/register", handler.Register)
 	router.POST("/login", handler.Login)
 
-	return router, service
+	return router, service, cleanup
 }
 
 func TestRegister(t *testing.T) {
-	router, service := setupTestHandler(t)
+	router, service, cleanup := setupTestHandler(t)
+	defer cleanup()
 
 	t.Run("Successful Registration", func(t *testing.T) {
 		// Create organization and account first
@@ -175,7 +175,8 @@ func TestRegister(t *testing.T) {
 }
 
 func TestLogin(t *testing.T) {
-	router, service := setupTestHandler(t)
+	router, service, cleanup := setupTestHandler(t)
+	defer cleanup()
 
 	t.Run("Successful Login", func(t *testing.T) {
 		// Create organization and account first

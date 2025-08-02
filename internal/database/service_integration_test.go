@@ -10,7 +10,7 @@ import (
 
 func TestOrganizationStructure(t *testing.T) {
 	t.Run("Create Organization", func(t *testing.T) {
-		db, cleanup := SetupTestDB(t)
+		db, cleanup := SetupTestDBLegacy(t)
 		defer cleanup()
 
 		service := NewService(db)
@@ -28,7 +28,7 @@ func TestOrganizationStructure(t *testing.T) {
 	})
 
 	t.Run("Create Account Under Organization", func(t *testing.T) {
-		db, cleanup := SetupTestDB(t)
+		db, cleanup := SetupTestDBLegacy(t)
 		defer cleanup()
 
 		service := NewService(db)
@@ -58,7 +58,7 @@ func TestOrganizationStructure(t *testing.T) {
 	})
 
 	t.Run("Create User Under Account", func(t *testing.T) {
-		db, cleanup := SetupTestDB(t)
+		db, cleanup := SetupTestDBLegacy(t)
 		defer cleanup()
 
 		service := NewService(db)
@@ -94,7 +94,7 @@ func TestOrganizationStructure(t *testing.T) {
 	})
 
 	t.Run("Get Organization Accounts", func(t *testing.T) {
-		db, cleanup := SetupTestDB(t)
+		db, cleanup := SetupTestDBLegacy(t)
 		defer cleanup()
 
 		service := NewService(db)
@@ -136,7 +136,7 @@ func TestOrganizationStructure(t *testing.T) {
 	})
 
 	t.Run("Get Users By Organization", func(t *testing.T) {
-		db, cleanup := SetupTestDB(t)
+		db, cleanup := SetupTestDBLegacy(t)
 		defer cleanup()
 
 		service := NewService(db)
@@ -197,7 +197,7 @@ func TestOrganizationStructure(t *testing.T) {
 	})
 
 	t.Run("Role Validation", func(t *testing.T) {
-		db, cleanup := SetupTestDB(t)
+		db, cleanup := SetupTestDBLegacy(t)
 		defer cleanup()
 
 		service := NewService(db)
@@ -239,7 +239,7 @@ func TestOrganizationStructure(t *testing.T) {
 	})
 
 	t.Run("Default Role Assignment", func(t *testing.T) {
-		db, cleanup := SetupTestDB(t)
+		db, cleanup := SetupTestDBLegacy(t)
 		defer cleanup()
 
 		service := NewService(db)
@@ -270,7 +270,7 @@ func TestOrganizationStructure(t *testing.T) {
 	})
 
 	t.Run("Organization Access Validation", func(t *testing.T) {
-		db, cleanup := SetupTestDB(t)
+		db, cleanup := SetupTestDBLegacy(t)
 		defer cleanup()
 
 		service := NewService(db)
@@ -313,7 +313,7 @@ func TestOrganizationStructure(t *testing.T) {
 	})
 
 	t.Run("Organization Admin Check", func(t *testing.T) {
-		db, cleanup := SetupTestDB(t)
+		db, cleanup := SetupTestDBLegacy(t)
 		defer cleanup()
 
 		service := NewService(db)
@@ -361,7 +361,7 @@ func TestOrganizationStructure(t *testing.T) {
 	})
 
 	t.Run("Delete Protection", func(t *testing.T) {
-		db, cleanup := SetupTestDB(t)
+		db, cleanup := SetupTestDBLegacy(t)
 		defer cleanup()
 
 		service := NewService(db)
@@ -423,7 +423,7 @@ func TestOrganizationStructure(t *testing.T) {
 }
 
 func TestInventoryWithOrganization(t *testing.T) {
-	db, cleanup := SetupTestDB(t)
+	db, cleanup := SetupTestDBLegacy(t)
 	defer cleanup()
 
 	service := NewService(db)
@@ -515,7 +515,7 @@ func TestInventoryWithOrganization(t *testing.T) {
 }
 
 func TestMenuWithOrganization(t *testing.T) {
-	db, cleanup := SetupTestDB(t)
+	db, cleanup := SetupTestDBLegacy(t)
 	defer cleanup()
 
 	service := NewService(db)

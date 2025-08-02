@@ -12,20 +12,20 @@ import (
 // This file uses the SetupTestDB function from test_setup.go
 
 func TestDatabaseConnection(t *testing.T) {
-	db, cleanup := SetupTestDB(t)
+	db, cleanup := SetupTestDBLegacy(t)
 	defer cleanup()
 
 	assert.NotNil(t, db)
 }
 
 func TestAccountOperations(t *testing.T) {
-	db, cleanup := SetupTestDB(t)
+	db, cleanup := SetupTestDBLegacy(t)
 	defer cleanup()
 
 	service := NewService(db)
 
 	// Create organization first
-	org := createTestOrganization(t, service, "Test Corp")
+	org := createTestOrganizationLegacy(t, service, "Test Corp")
 
 	// Test creating an account
 	account := &models.Account{
@@ -50,7 +50,7 @@ func TestAccountOperations(t *testing.T) {
 }
 
 func TestStandaloneAccountOperations(t *testing.T) {
-	db, cleanup := SetupTestDB(t)
+	db, cleanup := SetupTestDBLegacy(t)
 	defer cleanup()
 
 	service := NewService(db)
@@ -92,14 +92,14 @@ func TestStandaloneAccountOperations(t *testing.T) {
 }
 
 func TestUserOperations(t *testing.T) {
-	db, cleanup := SetupTestDB(t)
+	db, cleanup := SetupTestDBLegacy(t)
 	defer cleanup()
 
 	service := NewService(db)
 
 	// Create organization and account
-	org := createTestOrganization(t, service, "User Test Corp")
-	account := createTestAccount(t, service, org.ID, "Test Coffee Shop")
+	org := createTestOrganizationLegacy(t, service, "User Test Corp")
+	account := createTestAccountLegacy(t, service, org.ID, "Test Coffee Shop")
 
 	// Test creating a user
 	user := &models.User{
@@ -122,14 +122,14 @@ func TestUserOperations(t *testing.T) {
 }
 
 func TestInventoryItemOperations(t *testing.T) {
-	db, cleanup := SetupTestDB(t)
+	db, cleanup := SetupTestDBLegacy(t)
 	defer cleanup()
 
 	service := NewService(db)
 
 	// Create organization and account
-	org := createTestOrganization(t, service, "Inventory Test Corp")
-	account := createTestAccount(t, service, org.ID, "Test Coffee Shop")
+	org := createTestOrganizationLegacy(t, service, "Inventory Test Corp")
+	account := createTestAccountLegacy(t, service, org.ID, "Test Coffee Shop")
 
 	// Test creating an inventory item
 	item := &models.InventoryItem{
@@ -155,14 +155,14 @@ func TestInventoryItemOperations(t *testing.T) {
 }
 
 func TestMenuItemOperations(t *testing.T) {
-	db, cleanup := SetupTestDB(t)
+	db, cleanup := SetupTestDBLegacy(t)
 	defer cleanup()
 
 	service := NewService(db)
 
 	// Create organization and account
-	org := createTestOrganization(t, service, "Menu Test Corp")
-	account := createTestAccount(t, service, org.ID, "Test Coffee Shop")
+	org := createTestOrganizationLegacy(t, service, "Menu Test Corp")
+	account := createTestAccountLegacy(t, service, org.ID, "Test Coffee Shop")
 
 	// Test creating a menu item
 	menuItem := &models.MenuItem{
@@ -185,15 +185,15 @@ func TestMenuItemOperations(t *testing.T) {
 }
 
 func TestDeliveryOperations(t *testing.T) {
-	db, cleanup := SetupTestDB(t)
+	db, cleanup := SetupTestDBLegacy(t)
 	defer cleanup()
 
 	service := NewService(db)
 
 	// Create organization, account, and inventory item
-	org := createTestOrganization(t, service, "Delivery Test Corp")
-	account := createTestAccount(t, service, org.ID, "Test Coffee Shop")
-	item := createTestInventoryItem(t, service, account.ID, "Coffee Beans")
+	org := createTestOrganizationLegacy(t, service, "Delivery Test Corp")
+	account := createTestAccountLegacy(t, service, org.ID, "Test Coffee Shop")
+	item := createTestInventoryItemLegacy(t, service, account.ID, "Coffee Beans")
 
 	// Test creating a delivery
 	delivery := &models.Delivery{
@@ -218,16 +218,16 @@ func TestDeliveryOperations(t *testing.T) {
 }
 
 func TestInventorySnapshotOperations(t *testing.T) {
-	db, cleanup := SetupTestDB(t)
+	db, cleanup := SetupTestDBLegacy(t)
 	defer cleanup()
 
 	service := NewService(db)
 
 	// Create organization, account, and inventory items
-	org := createTestOrganization(t, service, "Snapshot Test Corp")
-	account := createTestAccount(t, service, org.ID, "Test Coffee Shop")
-	item1 := createTestInventoryItem(t, service, account.ID, "Coffee Beans")
-	item2 := createTestInventoryItem(t, service, account.ID, "Milk")
+	org := createTestOrganizationLegacy(t, service, "Snapshot Test Corp")
+	account := createTestAccountLegacy(t, service, org.ID, "Test Coffee Shop")
+	item1 := createTestInventoryItemLegacy(t, service, account.ID, "Coffee Beans")
+	item2 := createTestInventoryItemLegacy(t, service, account.ID, "Milk")
 
 	// Test creating an inventory snapshot
 	snapshot := &models.InventorySnapshot{
@@ -251,7 +251,7 @@ func TestInventorySnapshotOperations(t *testing.T) {
 }
 
 func TestOrganizationOperations(t *testing.T) {
-	db, cleanup := SetupTestDB(t)
+	db, cleanup := SetupTestDBLegacy(t)
 	defer cleanup()
 
 	service := NewService(db)
@@ -273,8 +273,8 @@ func TestOrganizationOperations(t *testing.T) {
 	assert.Equal(t, org.Description, retrievedOrg.Description)
 
 	// Test creating accounts under the organization
-	account1 := createTestAccount(t, service, org.ID, "Downtown Location")
-	account2 := createTestAccount(t, service, org.ID, "Uptown Location")
+	account1 := createTestAccountLegacy(t, service, org.ID, "Downtown Location")
+	account2 := createTestAccountLegacy(t, service, org.ID, "Uptown Location")
 
 	// Test getting all accounts for the organization
 	accounts, err := service.GetOrganizationAccounts(org.ID)
@@ -295,14 +295,14 @@ func TestOrganizationOperations(t *testing.T) {
 }
 
 func TestRoleValidation(t *testing.T) {
-	db, cleanup := SetupTestDB(t)
+	db, cleanup := SetupTestDBLegacy(t)
 	defer cleanup()
 
 	service := NewService(db)
 
 	// Create organization and account
-	org := createTestOrganization(t, service, "Role Test Corp")
-	account := createTestAccount(t, service, org.ID, "Test Shop")
+	org := createTestOrganizationLegacy(t, service, "Role Test Corp")
+	account := createTestAccountLegacy(t, service, org.ID, "Test Shop")
 
 	// Test valid roles
 	validRoles := []string{"user", "manager", "admin", "org_admin"}
@@ -329,14 +329,14 @@ func TestRoleValidation(t *testing.T) {
 }
 
 func TestDefaultRoleAssignment(t *testing.T) {
-	db, cleanup := SetupTestDB(t)
+	db, cleanup := SetupTestDBLegacy(t)
 	defer cleanup()
 
 	service := NewService(db)
 
 	// Create organization and account
-	org := createTestOrganization(t, service, "Default Role Corp")
-	account := createTestAccount(t, service, org.ID, "Test Shop")
+	org := createTestOrganizationLegacy(t, service, "Default Role Corp")
+	account := createTestAccountLegacy(t, service, org.ID, "Test Shop")
 
 	// Create user without specifying role
 	user := &models.User{
