@@ -7,6 +7,7 @@ import Login from './components/Login';
 import Register from './components/Register';
 import Dashboard from './components/Dashboard';
 import Inventory from './components/Inventory';
+import Analytics from './components/Analytics';
 import LandingPage from './components/LandingPage';
 
 // Create a custom theme for the application
@@ -87,6 +88,14 @@ const App: React.FC = () => {
               element={
                 <ProtectedRoute>
                   <Inventory />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/analytics" 
+              element={
+                <ProtectedRoute>
+                  <Analytics />
                 </ProtectedRoute>
               } 
             />
