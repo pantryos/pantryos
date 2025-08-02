@@ -246,6 +246,68 @@ func (h *EmailHandler) SendLowStockAlert(c *gin.Context) {
 	})
 }
 
+// SendWeeklySupplyChainReport sends a weekly supply chain report email
+// @Summary Send weekly supply chain report
+// @Description Send a weekly supply chain report email to all users in an account
+// @Tags email
+// @Accept json
+// @Produce json
+// @Param account_id path int true "Account ID"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} map[string]interface{}
+// @Failure 500 {object} map[string]interface{}
+// @Router /email/weekly-supply-chain/{account_id} [post]
+func (h *EmailHandler) SendWeeklySupplyChainReport(c *gin.Context) {
+	accountID, err := strconv.Atoi(c.Param("account_id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account ID"})
+		return
+	}
+
+	// Get account
+	account, err := h.service.GetAccount(accountID)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Account not found"})
+		return
+	}
+
+	// Get all users in the account
+	users, err := h.service.GetUsersByAccount(accountID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get users"})
+		return
+	}
+
+	if len(users) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No users found in account"})
+		return
+	}
+
+	// Generate supply chain report data
+	supplyChainData, err := h.generateSupplyChainReportData(accountID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate supply chain report"})
+		return
+	}
+
+	// Send weekly supply chain report
+	if err := h.emailService.SendWeeklySupplyChainReport(*account, users, supplyChainData); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send weekly supply chain report"})
+		return
+	}
+
+	// Log successful email sending for each user
+	for _, user := range users {
+		h.logEmailSuccess(accountID, &user.ID, user.Email, fmt.Sprintf("Weekly Supply Chain Report - %s", account.Name), models.EmailTypeWeeklySupplyChain)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":     "Weekly supply chain report sent successfully",
+		"account_id":  accountID,
+		"users_count": len(users),
+	})
+}
+
 // generateVerificationToken creates a new verification token for a user
 func (h *EmailHandler) generateVerificationToken(userID int) (string, error) {
 	// Generate random token
@@ -336,6 +398,116 @@ func (h *EmailHandler) generateStockReportData(accountID int) (*email.StockRepor
 	stockData.OutOfStockItems = outOfStockCount
 
 	return stockData, nil
+}
+
+// generateSupplyChainReportData generates supply chain report data for an account
+func (h *EmailHandler) generateSupplyChainReportData(accountID int) (*email.SupplyChainData, error) {
+	// Get all inventory items for the account
+	items, err := h.service.GetInventoryItemsByAccount(accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get latest inventory snapshot
+	latestSnapshot, err := h.service.GetLatestInventorySnapshot(accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get recent deliveries for vendor information
+	recentDeliveries, err := h.service.GetDeliveriesByAccount(accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate supply chain report data
+	supplyChainData := &email.SupplyChainData{
+		ReportDate: time.Now(),
+		TotalItems: len(items),
+		Items:      make([]email.SupplyChainItemData, 0, len(items)),
+	}
+
+	var totalValue float64
+	var lowStockCount, outOfStockCount, criticalCount int
+	var estimatedReorders float64
+
+	for _, item := range items {
+		currentStock := 0.0
+		if counts, exists := latestSnapshot.Counts[item.ID]; exists {
+			currentStock = counts
+		}
+
+		// Calculate item value
+		itemValue := currentStock * item.CostPerUnit
+		totalValue += itemValue
+
+		// Determine status and calculate supply chain metrics
+		status := "normal"
+		reorderQuantity := 0.0
+		daysUntilStockout := 999 // Default to high number
+
+		if currentStock <= 0 {
+			status = "out"
+			outOfStockCount++
+			reorderQuantity = item.MaxStockLevel
+		} else if currentStock <= item.MinStockLevel*0.5 {
+			status = "critical"
+			criticalCount++
+			reorderQuantity = item.MaxStockLevel - currentStock
+			daysUntilStockout = int(currentStock / (item.MinStockLevel / 7)) // Rough estimate
+		} else if currentStock <= item.MinStockLevel {
+			status = "low"
+			lowStockCount++
+			reorderQuantity = item.MaxStockLevel - currentStock
+			daysUntilStockout = int(currentStock / (item.MinStockLevel / 7)) // Rough estimate
+		}
+
+		// Calculate estimated reorder cost
+		estimatedReorders += reorderQuantity * item.CostPerUnit
+
+		// Get last delivery date for this item
+		var lastDeliveryDate *time.Time
+		for _, delivery := range recentDeliveries {
+			if delivery.InventoryItemID == item.ID {
+				if lastDeliveryDate == nil || delivery.DeliveryDate.After(*lastDeliveryDate) {
+					lastDeliveryDate = &delivery.DeliveryDate
+				}
+			}
+		}
+
+		// Get category name
+		categoryName := ""
+		if item.CategoryID != nil {
+			category, err := h.service.GetCategory(*item.CategoryID)
+			if err == nil {
+				categoryName = category.Name
+			}
+		}
+
+		supplyChainData.Items = append(supplyChainData.Items, email.SupplyChainItemData{
+			ID:                item.ID,
+			Name:              item.Name,
+			Category:          categoryName,
+			CurrentStock:      currentStock,
+			MinStock:          item.MinStockLevel,
+			MaxStock:          item.MaxStockLevel,
+			Unit:              item.Unit,
+			Status:            status,
+			PreferredVendor:   item.PreferredVendor,
+			CostPerUnit:       item.CostPerUnit,
+			ReorderQuantity:   reorderQuantity,
+			DaysUntilStockout: daysUntilStockout,
+			LastDeliveryDate:  lastDeliveryDate,
+		})
+	}
+
+	supplyChainData.TotalValue = totalValue
+	supplyChainData.LowStockItems = lowStockCount
+	supplyChainData.OutOfStockItems = outOfStockCount
+	supplyChainData.CriticalItems = criticalCount
+	supplyChainData.EstimatedReorders = estimatedReorders
+
+	return supplyChainData, nil
 }
 
 // logEmailSuccess logs a successful email send

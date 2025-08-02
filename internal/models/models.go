@@ -318,11 +318,12 @@ const (
 
 // Email type constants
 const (
-	EmailTypeVerification  = "verification"
-	EmailTypeWeeklyReport  = "weekly_stock_report"
-	EmailTypeLowStockAlert = "low_stock_alert"
-	EmailTypePasswordReset = "password_reset"
-	EmailTypeAccountInvite = "account_invite"
+	EmailTypeVerification      = "verification"
+	EmailTypeWeeklyReport      = "weekly_stock_report"
+	EmailTypeWeeklySupplyChain = "weekly_supply_chain_report"
+	EmailTypeLowStockAlert     = "low_stock_alert"
+	EmailTypePasswordReset     = "password_reset"
+	EmailTypeAccountInvite     = "account_invite"
 )
 
 // Token type constants

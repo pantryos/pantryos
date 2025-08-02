@@ -16,13 +16,21 @@ The email module provides comprehensive email functionality for the Stok invento
 - Visual status indicators (normal, low, out of stock)
 - Total inventory value calculations
 
-### 3. Low Stock Alerts
+### 3. Weekly Supply Chain Reports
+- Automated weekly supply chain reports sent to all users in an account
+- Comprehensive supply chain analysis with vendor information
+- Advanced status indicators (normal, low, critical, out of stock)
+- Estimated reorder costs and days until stockout
+- Vendor management and delivery tracking
+
+### 4. Low Stock Alerts
 - Automated alerts when items fall below minimum stock levels
 - Sent to all users in the affected account
 - Immediate notification system for inventory management
 
-### 4. Email Scheduling
-- Automated scheduler for weekly reports (Mondays at 9 AM)
+### 5. Email Scheduling
+- Automated scheduler for weekly stock reports (Mondays at 9 AM)
+- Automated scheduler for weekly supply chain reports (Tuesdays at 9 AM)
 - Automated low stock alerts (every 12 hours)
 - Configurable scheduling system
 
@@ -108,6 +116,22 @@ Manually triggers a weekly stock report for the specified account.
 }
 ```
 
+#### Send Weekly Supply Chain Report
+```http
+POST /api/v1/email/weekly-supply-chain/{account_id}
+```
+
+Manually triggers a weekly supply chain report for the specified account.
+
+**Response:**
+```json
+{
+  "message": "Weekly supply chain report sent successfully",
+  "account_id": 1,
+  "users_count": 3
+}
+```
+
 #### Send Low Stock Alert
 ```http
 POST /api/v1/email/low-stock-alert/{account_id}
@@ -139,6 +163,15 @@ Manually triggers a low stock alert for the specified account.
 - Color-coded status indicators
 - Total inventory value
 
+### Weekly Supply Chain Report Template
+- Comprehensive supply chain dashboard
+- Advanced status indicators (normal, low, critical, out)
+- Vendor information and preferred suppliers
+- Estimated reorder costs and quantities
+- Days until stockout calculations
+- Last delivery tracking
+- Supply chain recommendations
+
 ### Low Stock Alert Template
 - Urgent action required message
 - List of low stock items
@@ -153,6 +186,11 @@ The email scheduler runs automatically and handles:
 - **Schedule:** Every Monday at 9:00 AM
 - **Recipients:** All users in each account
 - **Content:** Complete inventory status report
+
+### Weekly Supply Chain Reports
+- **Schedule:** Every Tuesday at 9:00 AM
+- **Recipients:** All users in each account
+- **Content:** Comprehensive supply chain analysis with vendor management
 
 ### Low Stock Alerts
 - **Schedule:** Every 12 hours

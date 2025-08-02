@@ -72,6 +72,7 @@ func SetupRouter(router *gin.Engine, db *database.DB) {
 		v1.POST("/email/verification/:user_id", emailHandler.SendVerificationEmail)
 		v1.GET("/email/verify", emailHandler.VerifyEmail)
 		v1.POST("/email/weekly-report/:account_id", emailHandler.SendWeeklyStockReport)
+		v1.POST("/email/weekly-supply-chain/:account_id", emailHandler.SendWeeklySupplyChainReport)
 		v1.POST("/email/low-stock-alert/:account_id", emailHandler.SendLowStockAlert)
 	}
 }
