@@ -263,3 +263,70 @@ const (
 	BusinessTypeMultiLocation  = "multi_location"  // Multiple locations under one organization
 	BusinessTypeEnterprise     = "enterprise"      // Large enterprise with complex hierarchy
 )
+
+// EmailVerificationToken represents a temporary token for email verification
+// This allows users to verify their email addresses securely
+type EmailVerificationToken struct {
+	ID        int        `json:"id" gorm:"primaryKey;autoIncrement"`
+	UserID    int        `json:"user_id" gorm:"not null;index"`
+	Token     string     `json:"token" gorm:"not null;uniqueIndex"`
+	Type      string     `json:"type" gorm:"not null"` // "email_verification", "password_reset"
+	ExpiresAt time.Time  `json:"expires_at" gorm:"not null;index"`
+	UsedAt    *time.Time `json:"used_at"`
+	CreatedAt time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
+}
+
+// EmailLog represents a record of sent emails for tracking and debugging
+// This helps track email delivery and troubleshoot issues
+type EmailLog struct {
+	ID        int       `json:"id" gorm:"primaryKey;autoIncrement"`
+	AccountID int       `json:"account_id" gorm:"not null;index"`
+	UserID    *int      `json:"user_id" gorm:"index"` // Optional - null for bulk emails
+	ToEmail   string    `json:"to_email" gorm:"not null"`
+	Subject   string    `json:"subject" gorm:"not null"`
+	EmailType string    `json:"email_type" gorm:"not null"`            // "verification", "weekly_report", "low_stock_alert"
+	Status    string    `json:"status" gorm:"not null;default:'sent'"` // sent, failed, pending
+	ErrorMsg  string    `json:"error_msg"`                             // Error message if sending failed
+	SentAt    time.Time `json:"sent_at" gorm:"autoCreateTime"`
+	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
+}
+
+// EmailSchedule represents scheduled email tasks
+// This allows for automated email sending based on schedules
+type EmailSchedule struct {
+	ID         int        `json:"id" gorm:"primaryKey;autoIncrement"`
+	AccountID  int        `json:"account_id" gorm:"not null;index"`
+	EmailType  string     `json:"email_type" gorm:"not null"`  // "weekly_stock_report", "low_stock_alert"
+	Frequency  string     `json:"frequency" gorm:"not null"`   // "weekly", "daily", "monthly"
+	DayOfWeek  *int       `json:"day_of_week"`                 // 0-6 (Sunday-Saturday) for weekly
+	DayOfMonth *int       `json:"day_of_month"`                // 1-31 for monthly
+	TimeOfDay  string     `json:"time_of_day" gorm:"not null"` // "09:00", "18:30"
+	IsActive   bool       `json:"is_active" gorm:"not null;default:true"`
+	LastSentAt *time.Time `json:"last_sent_at"`
+	CreatedAt  time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt  time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
+}
+
+// Email status constants
+const (
+	EmailStatusSent    = "sent"
+	EmailStatusFailed  = "failed"
+	EmailStatusPending = "pending"
+)
+
+// Email type constants
+const (
+	EmailTypeVerification  = "verification"
+	EmailTypeWeeklyReport  = "weekly_stock_report"
+	EmailTypeLowStockAlert = "low_stock_alert"
+	EmailTypePasswordReset = "password_reset"
+	EmailTypeAccountInvite = "account_invite"
+)
+
+// Token type constants
+const (
+	TokenTypeEmailVerification = "email_verification"
+	TokenTypePasswordReset     = "password_reset"
+)

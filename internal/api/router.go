@@ -13,6 +13,7 @@ func SetupRouter(router *gin.Engine, db *database.DB) {
 	authHandler := handlers.NewAuthHandler(db)
 	inventoryHandler := handlers.NewInventoryHandler(db)
 	categoryHandler := handlers.NewCategoryHandler(db)
+	emailHandler := handlers.NewEmailHandler(db)
 
 	// Public routes for authentication
 	authRoutes := router.Group("/auth")
@@ -66,5 +67,11 @@ func SetupRouter(router *gin.Engine, db *database.DB) {
 		// Snapshot routes for inventory counts
 		v1.GET("/snapshots", inventoryHandler.GetInventorySnapshots)
 		v1.POST("/snapshots", inventoryHandler.CreateInventorySnapshot)
+
+		// Email routes
+		v1.POST("/email/verification/:user_id", emailHandler.SendVerificationEmail)
+		v1.GET("/email/verify", emailHandler.VerifyEmail)
+		v1.POST("/email/weekly-report/:account_id", emailHandler.SendWeeklyStockReport)
+		v1.POST("/email/low-stock-alert/:account_id", emailHandler.SendLowStockAlert)
 	}
 }
