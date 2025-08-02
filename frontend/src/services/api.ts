@@ -83,6 +83,11 @@ class ApiService {
     return response.data;
   }
 
+  async getLowStockItems(): Promise<InventoryItem[]> {
+    const response: AxiosResponse<InventoryItem[]> = await this.api.get('/api/v1/inventory/items/low-stock');
+    return response.data;
+  }
+
   async getInventoryItem(id: number): Promise<InventoryItem> {
     const response: AxiosResponse<InventoryItem> = await this.api.get(`/api/v1/inventory/items/${id}`);
     return response.data;

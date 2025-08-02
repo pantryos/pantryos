@@ -171,6 +171,18 @@ const Inventory: React.FC = () => {
     },
     { field: 'preferred_vendor', headerName: 'Vendor', width: 200 },
     { 
+      field: 'current_stock', 
+      headerName: 'Current Stock', 
+      width: 120,
+      valueFormatter: (params: any) => `${params.value} ${params.row.unit}`,
+      cellClassName: (params) => {
+        if (params.value < params.row.min_stock_level) {
+          return 'low-stock-cell';
+        }
+        return '';
+      }
+    },
+    { 
       field: 'min_stock_level', 
       headerName: 'Min Stock', 
       width: 120,
@@ -301,6 +313,11 @@ const Inventory: React.FC = () => {
             sx={{
               '& .MuiDataGrid-cell:focus': {
                 outline: 'none',
+              },
+              '& .low-stock-cell': {
+                backgroundColor: '#fff3cd',
+                color: '#856404',
+                fontWeight: 'bold',
               },
             }}
           />

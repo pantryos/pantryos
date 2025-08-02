@@ -30,6 +30,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import apiService from '../services/api';
 import { InventoryItem, MenuItem as MenuItemType, Delivery } from '../types/api';
+import LowStockBanner from './LowStockBanner';
 
 // Dashboard component with overview cards and navigation
 // Provides quick access to all major features of the inventory system
@@ -143,6 +144,9 @@ const Dashboard: React.FC = () => {
             Manage your inventory, menu items, and track deliveries from your dashboard.
           </Typography>
         </Paper>
+
+        {/* Low Stock Banner */}
+        <LowStockBanner maxItems={5} />
 
         {/* Stats Cards */}
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3, mb: 4 }}>

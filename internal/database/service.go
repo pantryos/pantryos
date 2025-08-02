@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/mnadev/stok/internal/models"
+	"gorm.io/gorm"
 )
 
 // Service combines all repositories and provides business logic for the application.
@@ -483,6 +484,66 @@ func (s *Service) GetInventoryItem(id int) (*models.InventoryItem, error) {
 //   - error: Any error that occurred during retrieval
 func (s *Service) GetInventoryItemsByAccount(accountID int) ([]models.InventoryItem, error) {
 	return s.inventoryItems.GetByAccountID(accountID)
+}
+
+// InventoryItemWithStock represents an inventory item with its current stock level
+type InventoryItemWithStock struct {
+	models.InventoryItem
+	CurrentStock float64 `json:"current_stock"`
+}
+
+// GetInventoryItemsWithCurrentStock retrieves all inventory items for a specific account
+// along with their current stock levels calculated from the latest inventory snapshot.
+// This method provides a comprehensive view of inventory status for the frontend.
+//
+// Parameters:
+//   - accountID: The unique identifier of the account
+//
+// Returns:
+//   - []InventoryItemWithStock: List of inventory items with current stock levels
+//   - error: Any error that occurred during retrieval
+func (s *Service) GetInventoryItemsWithCurrentStock(accountID int) ([]InventoryItemWithStock, error) {
+	// Get all inventory items for the account
+	items, err := s.inventoryItems.GetByAccountID(accountID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get the latest inventory snapshot
+	latestSnapshot, err := s.inventorySnapshots.GetLatestByAccountID(accountID)
+	if err != nil {
+		// If no snapshot exists, return items with zero stock
+		if err == gorm.ErrRecordNotFound {
+			result := make([]InventoryItemWithStock, len(items))
+			for i, item := range items {
+				result[i] = InventoryItemWithStock{
+					InventoryItem: item,
+					CurrentStock:  0,
+				}
+			}
+			return result, nil
+		}
+		return nil, err
+	}
+
+	// Create a map of item ID to current stock from the snapshot
+	stockMap := latestSnapshot.Counts
+
+	// Create result with current stock information
+	result := make([]InventoryItemWithStock, len(items))
+	for i, item := range items {
+		currentStock := 0.0
+		if stock, exists := stockMap[item.ID]; exists {
+			currentStock = stock
+		}
+
+		result[i] = InventoryItemWithStock{
+			InventoryItem: item,
+			CurrentStock:  currentStock,
+		}
+	}
+
+	return result, nil
 }
 
 // GetInventoryItemsByVendor retrieves inventory items from a specific vendor.

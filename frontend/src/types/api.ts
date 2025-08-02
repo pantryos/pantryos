@@ -51,7 +51,7 @@ export interface InventoryItem {
   max_stock_level: number;
   min_weeks_stock: number; // Minimum weeks of stock to maintain
   max_weeks_stock: number; // Maximum weeks of stock to maintain
-  current_stock?: number; // Optional - defaults to 0 if not provided
+  current_stock: number; // Current stock level from latest snapshot
 }
 
 export interface MenuItem {

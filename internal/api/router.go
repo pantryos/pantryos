@@ -34,6 +34,7 @@ func SetupRouter(router *gin.Engine, db *database.DB) {
 
 		// Inventory item routes
 		v1.GET("/inventory/items", inventoryHandler.GetInventoryItems)
+		v1.GET("/inventory/items/low-stock", inventoryHandler.GetLowStockItems)
 		v1.POST("/inventory/items", inventoryHandler.CreateInventoryItem)
 		v1.GET("/inventory/items/:id", inventoryHandler.GetInventoryItem)
 		v1.PUT("/inventory/items/:id", inventoryHandler.UpdateInventoryItem)

@@ -65,14 +65,60 @@ func (h *InventoryHandler) GetInventoryItems(c *gin.Context) {
 		return
 	}
 
-	// Get inventory items scoped to the user's account
-	items, err := h.service.GetInventoryItemsByAccount(user.AccountID)
+	// Get current stock levels from latest snapshot
+	itemsWithStock, err := h.service.GetInventoryItemsWithCurrentStock(user.AccountID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch inventory items"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch inventory items with stock levels"})
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"items": items})
+	c.JSON(http.StatusOK, itemsWithStock)
+}
+
+// GetLowStockItems retrieves inventory items that are currently low on stock.
+// This endpoint requires authentication and returns items scoped to the user's account
+// that have current stock levels below their minimum stock levels.
+//
+// Authentication: Required (JWT token in Authorization header)
+// Authorization: User must be authenticated and have access to the account
+//
+// Response:
+//   - 200 OK: List of low stock inventory items
+//   - 401 Unauthorized: User not authenticated
+//   - 404 Not Found: User not found in database
+//   - 500 Internal Server Error: Database or service error
+//
+// Security notes:
+//   - Validates user authentication
+//   - Scopes results to user's account only
+//   - Returns appropriate error codes for different failure scenarios
+func (h *InventoryHandler) GetLowStockItems(c *gin.Context) {
+	// Extract user ID from context (set by AuthMiddleware)
+	userID, _ := c.Get("userID")
+
+	// Retrieve user details from database
+	user, err := h.service.GetUser(userID.(int))
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	// Get all inventory items with current stock levels
+	itemsWithStock, err := h.service.GetInventoryItemsWithCurrentStock(user.AccountID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch inventory items with stock levels"})
+		return
+	}
+
+	// Filter for low stock items
+	var lowStockItems []database.InventoryItemWithStock
+	for _, item := range itemsWithStock {
+		if item.CurrentStock < item.MinStockLevel {
+			lowStockItems = append(lowStockItems, item)
+		}
+	}
+
+	c.JSON(http.StatusOK, lowStockItems)
 }
 
 // CreateInventoryItem creates a new inventory item for the authenticated user's account.
