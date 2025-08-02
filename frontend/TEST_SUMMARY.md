@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document summarizes the testing strategy and current test coverage for the Stok frontend application.
+This document summarizes the testing strategy and current test coverage for the PantryOS frontend application.
 
 ## Test Structure
 

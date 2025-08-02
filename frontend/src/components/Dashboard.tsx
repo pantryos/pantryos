@@ -105,7 +105,7 @@ const Dashboard: React.FC = () => {
       <AppBar position="static">
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-            Stok - Inventory Management
+            PantryOS - Inventory Management
           </Typography>
           <IconButton
             size="large"

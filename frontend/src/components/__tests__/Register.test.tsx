@@ -260,7 +260,7 @@ describe('Register Component', () => {
         </TestWrapper>
       );
 
-      expect(screen.getByText(/join stok using your invitation/i)).toBeInTheDocument();
+      expect(screen.getByText(/join pantryos using your invitation/i)).toBeInTheDocument();
       expect(screen.getByText(/you must have been invited by an account administrator/i)).toBeInTheDocument();
     });
   });

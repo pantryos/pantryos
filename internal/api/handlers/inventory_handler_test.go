@@ -10,9 +10,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mnadev/stok/internal/database"
-	"github.com/mnadev/stok/internal/models"
-	"github.com/mnadev/stok/pkg/utils"
+	"github.com/mnadev/pantryos/internal/database"
+	"github.com/mnadev/pantryos/internal/models"
+	"github.com/mnadev/pantryos/pkg/utils"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

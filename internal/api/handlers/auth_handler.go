@@ -5,10 +5,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/mnadev/stok/internal/auth"
-	"github.com/mnadev/stok/internal/database"
-	"github.com/mnadev/stok/internal/models"
-	"github.com/mnadev/stok/pkg/utils"
+	"github.com/mnadev/pantryos/internal/auth"
+	"github.com/mnadev/pantryos/internal/database"
+	"github.com/mnadev/pantryos/internal/models"
+	"github.com/mnadev/pantryos/pkg/utils"
 
 	"github.com/gin-gonic/gin"
 )

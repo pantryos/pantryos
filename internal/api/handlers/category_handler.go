@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/mnadev/stok/internal/database"
-	"github.com/mnadev/stok/internal/models"
+	"github.com/mnadev/pantryos/internal/database"
+	"github.com/mnadev/pantryos/internal/models"
 
 	"github.com/gin-gonic/gin"
 )
@@ -467,4 +467,4 @@ func (h *CategoryHandler) GetMenuItemsByCategory(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{"items": items})
-} 
+}

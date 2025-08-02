@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/mnadev/stok/internal/auth"
+	"github.com/mnadev/pantryos/internal/auth"
 
 	"github.com/gin-gonic/gin"
 )

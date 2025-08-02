@@ -21,11 +21,11 @@ describe('LandingPage Content', () => {
     
     const expectedContent = [
       'Smart Inventory Management',
-      'Stok',
+      'PantryOS',
       'Login',
       'Get Started',
       'Powerful Features',
-      'Why Choose Stok?',
+      'Why Choose PantryOS?',
       'Inventory Management',
       'Analytics & Reports',
       'Secure & Reliable',
@@ -44,7 +44,7 @@ describe('LandingPage Content', () => {
       'Start Free Trial',
       'Sign In',
       'Trusted by 1000+ businesses',
-      '© 2024 Stok. All rights reserved.',
+      '© 2024 PantryOS. All rights reserved.',
       'Quick Links'
     ];
 
@@ -52,7 +52,7 @@ describe('LandingPage Content', () => {
     // all the expected content sections
     expect(expectedContent).toHaveLength(26);
     expect(expectedContent).toContain('Smart Inventory Management');
-    expect(expectedContent).toContain('Stok');
+    expect(expectedContent).toContain('PantryOS');
     expect(expectedContent).toContain('Powerful Features');
   });
 

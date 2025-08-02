@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mnadev/stok/internal/database"
-	"github.com/mnadev/stok/internal/email"
-	"github.com/mnadev/stok/internal/models"
+	"github.com/mnadev/pantryos/internal/database"
+	"github.com/mnadev/pantryos/internal/email"
+	"github.com/mnadev/pantryos/internal/models"
 )
 
 // EmailHandler handles email-related API endpoints
@@ -74,13 +74,13 @@ func (h *EmailHandler) SendVerificationEmail(c *gin.Context) {
 	// Send verification email
 	if err := h.emailService.SendVerificationEmail(*user, *account, verificationURL); err != nil {
 		// Log email failure
-		h.logEmailFailure(user.AccountID, &userID, user.Email, "Verify Your Stok Account", models.EmailTypeVerification, err.Error())
+		h.logEmailFailure(user.AccountID, &userID, user.Email, "Verify Your PantryOS Account", models.EmailTypeVerification, err.Error())
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send verification email"})
 		return
 	}
 
 	// Log successful email
-	h.logEmailSuccess(user.AccountID, &userID, user.Email, "Verify Your Stok Account", models.EmailTypeVerification)
+	h.logEmailSuccess(user.AccountID, &userID, user.Email, "Verify Your PantryOS Account", models.EmailTypeVerification)
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": "Verification email sent successfully",

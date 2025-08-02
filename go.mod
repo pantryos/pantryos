@@ -1,4 +1,4 @@
-module github.com/mnadev/stok
+module github.com/mnadev/pantryos
 
 go 1.24.5
 

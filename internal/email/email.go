@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/mnadev/stok/internal/models"
+	"github.com/mnadev/pantryos/internal/models"
 )
 
 // EmailService handles all email operations
@@ -98,8 +98,8 @@ func NewEmailService() *EmailService {
 		SMTPPort:     getEnvOrDefault("SMTP_PORT", "587"),
 		SMTPUsername: getEnvOrDefault("SMTP_USERNAME", ""),
 		SMTPPassword: getEnvOrDefault("SMTP_PASSWORD", ""),
-		FromEmail:    getEnvOrDefault("FROM_EMAIL", "noreply@stok.com"),
-		FromName:     getEnvOrDefault("FROM_NAME", "Stok Inventory System"),
+		FromEmail:    getEnvOrDefault("FROM_EMAIL", "noreply@pantryos.com"),
+		FromName:     getEnvOrDefault("FROM_NAME", "PantryOS Inventory System"),
 		UseTLS:       getEnvOrDefault("SMTP_USE_TLS", "true") == "true",
 	}
 
@@ -117,7 +117,7 @@ func (es *EmailService) SendVerificationEmail(user models.User, account models.A
 		VerificationURL: verificationURL,
 	}
 
-	subject := "Verify Your Stok Account"
+	subject := "Verify Your PantryOS Account"
 	body, err := es.renderTemplate("verification", data)
 	if err != nil {
 		return fmt.Errorf("failed to render verification template: %w", err)
@@ -315,12 +315,12 @@ func getEmailTemplate(templateName string) string {
 <body>
     <div class="container">
         <div class="header">
-            <h1>Welcome to Stok!</h1>
+            		<h1>Welcome to PantryOS!</h1>
         </div>
         <div class="content">
             <h2>Verify Your Account</h2>
             <p>Hello,</p>
-            <p>Thank you for joining <strong>{{.AccountName}}</strong> on Stok! To complete your account setup, please verify your email address.</p>
+            		<p>Thank you for joining <strong>{{.AccountName}}</strong> on PantryOS! To complete your account setup, please verify your email address.</p>
             <p>Click the button below to verify your account:</p>
             <div style="text-align: center;">
                 <a href="{{.VerificationURL}}" class="button">Verify Account</a>
@@ -328,10 +328,10 @@ func getEmailTemplate(templateName string) string {
             <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
             <p style="word-break: break-all; color: #666;">{{.VerificationURL}}</p>
             <p>This link will expire in 24 hours for security reasons.</p>
-            <p>If you didn't create an account with Stok, please ignore this email.</p>
+            		<p>If you didn't create an account with PantryOS, please ignore this email.</p>
         </div>
         <div class="footer">
-            <p>© 2024 Stok Inventory System. All rights reserved.</p>
+            <p>© 2024 PantryOS Inventory System. All rights reserved.</p>
         </div>
     </div>
 </body>
@@ -420,7 +420,7 @@ func getEmailTemplate(templateName string) string {
             </table>
         </div>
         <div class="footer">
-            <p>© 2024 Stok Inventory System. All rights reserved.</p>
+            <p>© 2024 PantryOS Inventory System. All rights reserved.</p>
         </div>
     </div>
 </body>
@@ -481,7 +481,7 @@ func getEmailTemplate(templateName string) string {
             <p><strong>Please review these items and place orders as needed to maintain adequate stock levels.</strong></p>
         </div>
         <div class="footer">
-            <p>© 2024 Stok Inventory System. All rights reserved.</p>
+            <p>© 2024 PantryOS Inventory System. All rights reserved.</p>
         </div>
     </div>
 </body>
@@ -596,7 +596,7 @@ func getEmailTemplate(templateName string) string {
             </div>
         </div>
         <div class="footer">
-            <p>© 2024 Stok Inventory System. All rights reserved.</p>
+            <p>© 2024 PantryOS Inventory System. All rights reserved.</p>
         </div>
     </div>
 </body>

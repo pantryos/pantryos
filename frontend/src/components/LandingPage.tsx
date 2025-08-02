@@ -88,7 +88,7 @@ const LandingPage: React.FC = () => {
       <AppBar position="static" elevation={0} sx={{ bgcolor: 'white', color: 'text.primary' }}>
         <Toolbar>
           <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 'bold', color: theme.palette.primary.main }}>
-            Stok
+            PantryOS
           </Typography>
           <Stack direction="row" spacing={2}>
             <Button
@@ -287,7 +287,7 @@ const LandingPage: React.FC = () => {
         }}>
           <Box>
             <Typography variant="h3" component="h2" gutterBottom sx={{ fontWeight: 'bold' }}>
-              Why Choose Stok?
+              Why Choose PantryOS?
             </Typography>
             <Typography variant="body1" color="text.secondary" paragraph sx={{ mb: 4 }}>
               Our inventory management system is designed to help businesses of all sizes 
@@ -324,7 +324,7 @@ const LandingPage: React.FC = () => {
                 Ready to Get Started?
               </Typography>
               <Typography variant="body1" color="text.secondary" paragraph sx={{ mb: 3 }}>
-                Join thousands of businesses that trust Stok for their inventory management needs. 
+                Join thousands of businesses that trust PantryOS for their inventory management needs. 
                 Start your free trial today and experience the difference.
               </Typography>
               <Stack direction="row" spacing={2}>
@@ -372,7 +372,7 @@ const LandingPage: React.FC = () => {
           }}>
             <Box>
               <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 2 }}>
-                Stok
+                PantryOS
               </Typography>
               <Typography variant="body2" color="grey.400">
                 Smart inventory management for modern businesses. 
@@ -403,7 +403,7 @@ const LandingPage: React.FC = () => {
           </Box>
           <Divider sx={{ my: 3, borderColor: 'grey.700' }} />
           <Typography variant="body2" color="grey.400" align="center">
-            © 2024 Stok. All rights reserved.
+            © 2024 PantryOS. All rights reserved.
           </Typography>
         </Container>
       </Box>

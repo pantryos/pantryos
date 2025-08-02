@@ -3,9 +3,9 @@ version: '3.8'
 services:
   postgres:
     image: postgres:15-alpine
-    container_name: stok_postgres
+    container_name: pantryos_postgres
     environment:
-      POSTGRES_DB: stok_db
+      POSTGRES_DB: pantryos_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
     ports:
@@ -21,9 +21,9 @@ services:
   # Optional: pgAdmin for database management
   pgadmin:
     image: dpage/pgadmin4:latest
-    container_name: stok_pgadmin
+    container_name: pantryos_pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@stok.com
+      PGADMIN_DEFAULT_EMAIL: admin@pantryos.com
       PGADMIN_DEFAULT_PASSWORD: admin
     ports:
       - "8081:80"

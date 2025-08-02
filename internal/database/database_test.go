@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mnadev/stok/internal/models"
+	"github.com/mnadev/pantryos/internal/models"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

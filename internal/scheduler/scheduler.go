@@ -5,9 +5,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/mnadev/stok/internal/database"
-	"github.com/mnadev/stok/internal/email"
-	"github.com/mnadev/stok/internal/models"
+	"github.com/mnadev/pantryos/internal/database"
+	"github.com/mnadev/pantryos/internal/email"
+	"github.com/mnadev/pantryos/internal/models"
 )
 
 // Scheduler handles automated tasks like sending weekly stock reports

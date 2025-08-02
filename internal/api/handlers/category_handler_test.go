@@ -7,8 +7,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/mnadev/stok/internal/database"
-	"github.com/mnadev/stok/internal/models"
+	"github.com/mnadev/pantryos/internal/database"
+	"github.com/mnadev/pantryos/internal/models"
 
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -46,7 +46,7 @@ func TestCategoryHandler_CreateCategory(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	categoryHandler := NewCategoryHandler(db)
-	
+
 	// Add auth middleware mock
 	router.Use(func(c *gin.Context) {
 		c.Set("userID", user.ID)
@@ -137,7 +137,7 @@ func TestCategoryHandler_GetCategories(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	categoryHandler := NewCategoryHandler(db)
-	
+
 	// Add auth middleware mock
 	router.Use(func(c *gin.Context) {
 		c.Set("userID", user.ID)
@@ -204,7 +204,7 @@ func TestCategoryHandler_CreateInventoryItemWithCategory(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.New()
 	inventoryHandler := NewInventoryHandler(db)
-	
+
 	// Add auth middleware mock
 	router.Use(func(c *gin.Context) {
 		c.Set("userID", user.ID)
@@ -240,4 +240,4 @@ func TestCategoryHandler_CreateInventoryItemWithCategory(t *testing.T) {
 	assert.Len(t, items, 1)
 	assert.Equal(t, "Arabica Coffee Beans", items[0].Name)
 	assert.Equal(t, category.ID, *items[0].CategoryID)
-} 
+}

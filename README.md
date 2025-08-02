@@ -1,4 +1,4 @@
-# Stok - Coffee Shop Inventory Management System
+# PantryOS - Coffee Shop Inventory Management System
 
 A comprehensive inventory management system for coffee shops and restaurants, built with Go and Gin framework. The system provides multi-tenant support, inventory tracking, menu management, delivery logging, and variance reporting with Toast POS integration.
 
@@ -26,7 +26,7 @@ A comprehensive inventory management system for coffee shops and restaurants, bu
 ## Project Structure
 
 ```
-stok/
+pantryos/
 ├── cmd/
 │   └── server/
 │       └── main.go              # Application entry point with server configuration
@@ -86,7 +86,7 @@ stok/
 
 ```bash
 git clone <repository-url>
-cd stok
+cd pantryos
 go mod tidy
 ```
 
@@ -97,7 +97,7 @@ docker-compose up -d postgres
 ```
 
 This will start PostgreSQL on port 5432 with:
-- Database: `stok_db`
+- Database: `pantryos_db`
 - Username: `postgres`
 - Password: `password`
 
@@ -110,7 +110,7 @@ DB_HOST=localhost
 DB_PORT=5432
 DB_USER=postgres
 DB_PASSWORD=password
-DB_NAME=stok_db
+DB_NAME=pantryos_db
 DB_SSLMODE=disable
 PORT=8080
 JWT_SECRET=your-secret-key
@@ -274,7 +274,7 @@ The codebase follows Go best practices:
 
 ```bash
 # Build the application
-docker build -t stok .
+docker build -t pantryos .
 
 # Run with database
 docker-compose up
@@ -283,7 +283,7 @@ docker-compose up
 ### Database Management
 
 Access pgAdmin at `http://localhost:8081`:
-- Email: `admin@stok.com`
+- Email: `admin@pantryos.com`
 - Password: `admin`
 
 ## Contributing

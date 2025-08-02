@@ -78,7 +78,7 @@ const Register: React.FC = () => {
             Create Account
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Join Stok using your invitation. You must have been invited by an account administrator.
+            Join PantryOS using your invitation. You must have been invited by an account administrator.
           </Typography>
 
           {/* Error Alert */}

@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/mnadev/stok/internal/models"
+	"github.com/mnadev/pantryos/internal/models"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"

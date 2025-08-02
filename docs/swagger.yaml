@@ -152,7 +152,7 @@ info:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: http://swagger.io/terms/
-  title: Stok Inventory Management API
+  title: PantryOS Inventory Management API
   version: "1.0"
 paths:
   /api/v1/deliveries:

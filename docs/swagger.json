@@ -2,7 +2,7 @@
     "swagger": "2.0",
     "info": {
         "description": "A comprehensive inventory management system for coffee shops and restaurants",
-        "title": "Stok Inventory Management API",
+        "title": "PantryOS Inventory Management API",
         "termsOfService": "http://swagger.io/terms/",
         "contact": {
             "name": "API Support",

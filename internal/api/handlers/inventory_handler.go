@@ -8,8 +8,8 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/mnadev/stok/internal/database"
-	"github.com/mnadev/stok/internal/models"
+	"github.com/mnadev/pantryos/internal/database"
+	"github.com/mnadev/pantryos/internal/models"
 
 	"github.com/gin-gonic/gin"
 )

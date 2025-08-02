@@ -67,7 +67,7 @@ const Login: React.FC = () => {
         >
           {/* Header */}
           <Typography component="h1" variant="h4" gutterBottom>
-            Welcome to Stok
+            Welcome to PantryOS
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
             Sign in to manage your inventory

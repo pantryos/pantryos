@@ -1,6 +1,6 @@
-# Stok Frontend
+# PantryOS Frontend
 
-A modern React TypeScript frontend for the Stok inventory management system.
+A modern React TypeScript frontend for the PantryOS inventory management system.
 
 ## Features
 
@@ -25,7 +25,7 @@ A modern React TypeScript frontend for the Stok inventory management system.
 
 - Node.js (v18 or higher)
 - npm or yarn
-- The Stok backend server running on `http://localhost:8080`
+- The PantryOS backend server running on `http://localhost:8080`
 
 ### Installation
 

@@ -9,7 +9,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/mnadev/stok/internal/models"
+	"github.com/mnadev/pantryos/internal/models"
 	"gorm.io/gorm"
 )
 

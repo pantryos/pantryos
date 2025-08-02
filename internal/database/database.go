@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/mnadev/stok/internal/models"
+	"github.com/mnadev/pantryos/internal/models"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -43,7 +43,7 @@ func Initialize() (*DB, error) {
 		port := getEnv("DB_PORT", "5432")
 		user := getEnv("DB_USER", "postgres")
 		password := getEnv("DB_PASSWORD", "password")
-		dbname := getEnv("DB_NAME", "stok_db")
+		dbname := getEnv("DB_NAME", "pantryos_db")
 		sslmode := getEnv("DB_SSLMODE", "disable")
 
 		// Create DSN (Data Source Name) for PostgreSQL connection

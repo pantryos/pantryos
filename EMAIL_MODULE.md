@@ -1,6 +1,6 @@
 # Email Module Documentation
 
-The email module provides comprehensive email functionality for the Stok inventory management system, including account verification, weekly stock reports, and low stock alerts.
+The email module provides comprehensive email functionality for the PantryOS inventory management system, including account verification, weekly stock reports, and low stock alerts.
 
 ## Features
 
@@ -49,8 +49,8 @@ SMTP_PASSWORD=your-app-password
 SMTP_USE_TLS=true
 
 # Email Sender Configuration
-FROM_EMAIL=noreply@stok.com
-FROM_NAME=Stok Inventory System
+FROM_EMAIL=noreply@pantryos.com
+FROM_NAME=PantryOS Inventory System
 ```
 
 ### Gmail Setup

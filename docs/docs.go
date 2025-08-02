@@ -1222,7 +1222,7 @@ var SwaggerInfo = &swag.Spec{
 	Host:             "localhost:8080",
 	BasePath:         "/",
 	Schemes:          []string{},
-	Title:            "Stok Inventory Management API",
+	Title:            "PantryOS Inventory Management API",
 	Description:      "A comprehensive inventory management system for coffee shops and restaurants",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,

@@ -1,9 +1,9 @@
 package api
 
 import (
-	"github.com/mnadev/stok/internal/api/handlers"
-	"github.com/mnadev/stok/internal/api/middleware"
-	"github.com/mnadev/stok/internal/database"
+	"github.com/mnadev/pantryos/internal/api/handlers"
+	"github.com/mnadev/pantryos/internal/api/middleware"
+	"github.com/mnadev/pantryos/internal/database"
 
 	"github.com/gin-gonic/gin"
 )
