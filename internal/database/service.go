@@ -40,6 +40,8 @@ type Service struct {
 	accountInvitations AccountInvitationRepository
 	// categories handles item categorization and organization
 	categories CategoryRepository
+	// emailSchedules handles email scheduling configuration
+	emailSchedules EmailScheduleRepository
 }
 
 // NewService creates a new database service with all repositories initialized.
@@ -62,6 +64,7 @@ func NewService(db *DB) *Service {
 		inventorySnapshots: NewInventorySnapshotRepository(db),
 		accountInvitations: NewAccountInvitationRepository(db),
 		categories:         NewCategoryRepository(db),
+		emailSchedules:    NewEmailScheduleRepository(db),
 	}
 }
 
@@ -1467,3 +1470,121 @@ func (s *Service) GetMenuItemsByCategoryID(accountID int, categoryID int) ([]mod
 
 	return filteredItems, nil
 }
+
+// Email schedule operations
+// These methods handle email scheduling configuration for automated email sending.
+
+// CreateEmailSchedule creates a new email schedule for an account.
+// Email schedules control when automated emails are sent to users.
+//
+// Parameters:
+//   - schedule: The email schedule data to create
+//
+// Returns:
+//   - error: Any error that occurred during creation
+//
+// Business rules:
+//   - Email schedules must be associated with a valid account
+//   - Email types must be valid (weekly_stock_report, low_stock_alert, etc.)
+//   - Time formats must be valid (HH:MM format)
+func (s *Service) CreateEmailSchedule(schedule *models.EmailSchedule) error {
+	return s.emailSchedules.Create(schedule)
+}
+
+// GetEmailSchedule retrieves an email schedule by its unique identifier.
+// This method provides access to email schedule details for validation
+// and business logic operations.
+//
+// Parameters:
+//   - id: The unique identifier of the email schedule to retrieve
+//
+// Returns:
+//   - *models.EmailSchedule: The email schedule data if found
+//   - error: Any error that occurred during retrieval
+func (s *Service) GetEmailSchedule(id int) (*models.EmailSchedule, error) {
+	return s.emailSchedules.GetByID(id)
+}
+
+// GetEmailSchedulesByAccount retrieves all email schedules for a specific account.
+// This method is used to manage email scheduling configuration for accounts.
+//
+// Parameters:
+//   - accountID: The account identifier to get schedules for
+//
+// Returns:
+//   - []models.EmailSchedule: List of email schedules for the account
+//   - error: Any error that occurred during retrieval
+func (s *Service) GetEmailSchedulesByAccount(accountID int) ([]models.EmailSchedule, error) {
+	return s.emailSchedules.GetByAccountID(accountID)
+}
+
+// GetEmailScheduleByAccountAndType retrieves a specific email schedule for an account.
+// This method is used to check if an account has a specific type of email scheduled.
+//
+// Parameters:
+//   - accountID: The account identifier
+//   - emailType: The type of email to look for (e.g., "weekly_stock_report")
+//
+// Returns:
+//   - *models.EmailSchedule: The email schedule if found
+//   - error: Any error that occurred during retrieval
+func (s *Service) GetEmailScheduleByAccountAndType(accountID int, emailType string) (*models.EmailSchedule, error) {
+	return s.emailSchedules.GetByAccountIDAndType(accountID, emailType)
+}
+
+// GetActiveEmailSchedulesByAccount retrieves all active email schedules for a specific account.
+// This method is used by the scheduler to determine which emails to send.
+//
+// Parameters:
+//   - accountID: The account identifier to get active schedules for
+//
+// Returns:
+//   - []models.EmailSchedule: List of active email schedules for the account
+//   - error: Any error that occurred during retrieval
+func (s *Service) GetActiveEmailSchedulesByAccount(accountID int) ([]models.EmailSchedule, error) {
+	return s.emailSchedules.GetActiveByAccountID(accountID)
+}
+
+// UpdateEmailSchedule updates an existing email schedule.
+// This method allows modifying email scheduling configuration.
+//
+// Parameters:
+//   - schedule: The email schedule data to update
+//
+// Returns:
+//   - error: Any error that occurred during update
+//
+// Business rules:
+//   - Email schedules must be associated with a valid account
+//   - Email types must be valid
+//   - Time formats must be valid
+func (s *Service) UpdateEmailSchedule(schedule *models.EmailSchedule) error {
+	return s.emailSchedules.Update(schedule)
+}
+
+// DeleteEmailSchedule removes an email schedule from the system.
+// This method allows disabling automated email sending for specific types.
+//
+// Parameters:
+//   - id: The unique identifier of the email schedule to delete
+//
+// Returns:
+//   - error: Any error that occurred during deletion
+func (s *Service) DeleteEmailSchedule(id int) error {
+	return s.emailSchedules.Delete(id)
+}
+
+// UpdateEmailScheduleLastSent updates the last sent timestamp for an email schedule.
+// This method is used by the scheduler to track when emails were last sent.
+//
+// Parameters:
+//   - id: The unique identifier of the email schedule
+//   - lastSentAt: The timestamp when the email was last sent
+//
+// Returns:
+//   - error: Any error that occurred during update
+func (s *Service) UpdateEmailScheduleLastSent(id int, lastSentAt time.Time) error {
+	return s.emailSchedules.UpdateLastSentAt(id, lastSentAt)
+}
+
+// Business logic functions

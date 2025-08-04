@@ -74,5 +74,13 @@ func SetupRouter(router *gin.Engine, db *database.DB) {
 		v1.POST("/email/weekly-report/:account_id", emailHandler.SendWeeklyStockReport)
 		v1.POST("/email/weekly-supply-chain/:account_id", emailHandler.SendWeeklySupplyChainReport)
 		v1.POST("/email/low-stock-alert/:account_id", emailHandler.SendLowStockAlert)
+
+		// Email schedule management routes
+		v1.GET("/accounts/:accountID/email-schedules", handlers.GetEmailSchedules)
+		v1.GET("/accounts/:accountID/email-schedules/:emailType", handlers.GetEmailSchedule)
+		v1.POST("/accounts/:accountID/email-schedules", handlers.CreateEmailSchedule)
+		v1.PUT("/accounts/:accountID/email-schedules/:emailType", handlers.UpdateEmailSchedule)
+		v1.DELETE("/accounts/:accountID/email-schedules/:emailType", handlers.DeleteEmailSchedule)
+		v1.PATCH("/accounts/:accountID/email-schedules/:emailType/toggle", handlers.ToggleEmailSchedule)
 	}
 }

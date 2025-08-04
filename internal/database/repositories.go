@@ -117,6 +117,17 @@ type CategoryRepository interface {
 	Delete(id int) error
 }
 
+type EmailScheduleRepository interface {
+	Create(schedule *models.EmailSchedule) error
+	GetByID(id int) (*models.EmailSchedule, error)
+	GetByAccountID(accountID int) ([]models.EmailSchedule, error)
+	GetByAccountIDAndType(accountID int, emailType string) (*models.EmailSchedule, error)
+	GetActiveByAccountID(accountID int) ([]models.EmailSchedule, error)
+	Update(schedule *models.EmailSchedule) error
+	Delete(id int) error
+	UpdateLastSentAt(id int, lastSentAt time.Time) error
+}
+
 // Repository implementations
 type organizationRepository struct {
 	db *DB
@@ -734,6 +745,71 @@ func (r *categoryRepository) Update(category *models.Category) error {
 
 func (r *categoryRepository) Delete(id int) error {
 	return r.db.Delete(&models.Category{}, id).Error
+}
+
+// Email schedule repository implementation
+type emailScheduleRepository struct {
+	db *DB
+}
+
+func NewEmailScheduleRepository(db *DB) EmailScheduleRepository {
+	return &emailScheduleRepository{db: db}
+}
+
+func (r *emailScheduleRepository) Create(schedule *models.EmailSchedule) error {
+	schedule.CreatedAt = time.Now()
+	schedule.UpdatedAt = time.Now()
+	return r.db.Create(schedule).Error
+}
+
+func (r *emailScheduleRepository) GetByID(id int) (*models.EmailSchedule, error) {
+	var schedule models.EmailSchedule
+	// Use Find instead of First to avoid LIMIT clause that ramsql doesn't support
+	err := r.db.Where("id = ?", id).Find(&schedule).Error
+	if err != nil {
+		return nil, err
+	}
+	if schedule.ID == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return &schedule, nil
+}
+
+func (r *emailScheduleRepository) GetByAccountID(accountID int) ([]models.EmailSchedule, error) {
+	var schedules []models.EmailSchedule
+	err := r.db.Where("account_id = ?", accountID).Order("created_at DESC").Find(&schedules).Error
+	return schedules, err
+}
+
+func (r *emailScheduleRepository) GetByAccountIDAndType(accountID int, emailType string) (*models.EmailSchedule, error) {
+	var schedule models.EmailSchedule
+	err := r.db.Where("account_id = ? AND email_type = ?", accountID, emailType).First(&schedule).Error
+	if err != nil {
+		return nil, err
+	}
+	if schedule.ID == 0 {
+		return nil, gorm.ErrRecordNotFound
+	}
+	return &schedule, nil
+}
+
+func (r *emailScheduleRepository) GetActiveByAccountID(accountID int) ([]models.EmailSchedule, error) {
+	var schedules []models.EmailSchedule
+	err := r.db.Where("account_id = ? AND is_active = true", accountID).Order("created_at DESC").Find(&schedules).Error
+	return schedules, err
+}
+
+func (r *emailScheduleRepository) Update(schedule *models.EmailSchedule) error {
+	schedule.UpdatedAt = time.Now()
+	return r.db.Save(schedule).Error
+}
+
+func (r *emailScheduleRepository) Delete(id int) error {
+	return r.db.Delete(&models.EmailSchedule{}, id).Error
+}
+
+func (r *emailScheduleRepository) UpdateLastSentAt(id int, lastSentAt time.Time) error {
+	return r.db.Model(&models.EmailSchedule{}).Where("id = ?", id).Update("last_sent_at", lastSentAt).Error
 }
 
 // Business logic functions

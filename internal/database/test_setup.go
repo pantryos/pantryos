@@ -127,6 +127,7 @@ func runTestMigrations(gormDB *gorm.DB, config *TestDBConfig) error {
 		&models.InventorySnapshot{},
 		&models.Delivery{},
 		&models.AccountInvitation{},
+		&models.EmailSchedule{},
 	}
 
 	// Run migrations with context

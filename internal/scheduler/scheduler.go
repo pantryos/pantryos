@@ -107,6 +107,12 @@ func (s *Scheduler) sendWeeklyStockReports() {
 	}
 
 	for _, account := range accounts {
+		// Ensure account has default email schedules
+		if err := s.createDefaultEmailSchedules(account.ID); err != nil {
+			log.Printf("Failed to create default email schedules for account %d: %v", account.ID, err)
+			continue
+		}
+
 		// Check if it's time to send weekly report for this account
 		if s.shouldSendWeeklyReport(account.ID) {
 			s.sendWeeklyStockReportForAccount(account)
@@ -142,6 +148,12 @@ func (s *Scheduler) sendWeeklySupplyChainReports() {
 	}
 
 	for _, account := range accounts {
+		// Ensure account has default email schedules
+		if err := s.createDefaultEmailSchedules(account.ID); err != nil {
+			log.Printf("Failed to create default email schedules for account %d: %v", account.ID, err)
+			continue
+		}
+
 		// Check if it's time to send weekly supply chain report for this account
 		if s.shouldSendWeeklySupplyChainReport(account.ID) {
 			s.sendWeeklySupplyChainReportForAccount(account)
@@ -151,30 +163,138 @@ func (s *Scheduler) sendWeeklySupplyChainReports() {
 
 // shouldSendWeeklyReport checks if it's time to send a weekly report for an account
 func (s *Scheduler) shouldSendWeeklyReport(accountID int) bool {
-	// For now, we'll send weekly reports every Monday at 9 AM
-	// TODO: Make this configurable per account
-	now := time.Now()
-
-	// Check if it's Monday and between 9-10 AM
-	if now.Weekday() == time.Monday && now.Hour() == 9 {
-		return true
+	// Get account-specific email schedule
+	schedule, err := s.service.GetEmailScheduleByAccountAndType(accountID, models.EmailTypeWeeklyReport)
+	if err != nil {
+		// If no schedule found, use default behavior (Monday at 9 AM)
+		now := time.Now()
+		if now.Weekday() == time.Monday && now.Hour() == 9 {
+			return true
+		}
+		return false
 	}
 
-	return false
+	// Check if schedule is active
+	if !schedule.IsActive {
+		return false
+	}
+
+	now := time.Now()
+
+	// Check if it's the right day of week (if specified)
+	if schedule.DayOfWeek != nil {
+		if int(now.Weekday()) != *schedule.DayOfWeek {
+			return false
+		}
+	} else {
+		// Default to Monday if not specified
+		if now.Weekday() != time.Monday {
+			return false
+		}
+	}
+
+	// Check if it's the right time of day
+	if schedule.TimeOfDay != "" {
+		// Parse the time (format: "09:00", "18:30", etc.)
+		expectedTime, err := time.Parse("15:04", schedule.TimeOfDay)
+		if err != nil {
+			// If parsing fails, use default 9 AM
+			if now.Hour() != 9 {
+				return false
+			}
+		} else {
+			// Check if current time matches expected time (within 1 hour window)
+			currentHour := now.Hour()
+			expectedHour := expectedTime.Hour()
+			if currentHour != expectedHour {
+				return false
+			}
+		}
+	} else {
+		// Default to 9 AM if not specified
+		if now.Hour() != 9 {
+			return false
+		}
+	}
+
+	// Check if we've already sent an email recently (within the last 23 hours)
+	// This prevents duplicate emails if the scheduler runs multiple times
+	if schedule.LastSentAt != nil {
+		timeSinceLastSent := now.Sub(*schedule.LastSentAt)
+		if timeSinceLastSent < 23*time.Hour {
+			return false
+		}
+	}
+
+	return true
 }
 
 // shouldSendWeeklySupplyChainReport checks if it's time to send a weekly supply chain report for an account
 func (s *Scheduler) shouldSendWeeklySupplyChainReport(accountID int) bool {
-	// For now, we'll send weekly supply chain reports every Tuesday at 9 AM
-	// TODO: Make this configurable per account
-	now := time.Now()
-
-	// Check if it's Tuesday and between 9-10 AM
-	if now.Weekday() == time.Tuesday && now.Hour() == 9 {
-		return true
+	// Get account-specific email schedule
+	schedule, err := s.service.GetEmailScheduleByAccountAndType(accountID, models.EmailTypeWeeklySupplyChain)
+	if err != nil {
+		// If no schedule found, use default behavior (Tuesday at 9 AM)
+		now := time.Now()
+		if now.Weekday() == time.Tuesday && now.Hour() == 9 {
+			return true
+		}
+		return false
 	}
 
-	return false
+	// Check if schedule is active
+	if !schedule.IsActive {
+		return false
+	}
+
+	now := time.Now()
+
+	// Check if it's the right day of week (if specified)
+	if schedule.DayOfWeek != nil {
+		if int(now.Weekday()) != *schedule.DayOfWeek {
+			return false
+		}
+	} else {
+		// Default to Tuesday if not specified
+		if now.Weekday() != time.Tuesday {
+			return false
+		}
+	}
+
+	// Check if it's the right time of day
+	if schedule.TimeOfDay != "" {
+		// Parse the time (format: "09:00", "18:30", etc.)
+		expectedTime, err := time.Parse("15:04", schedule.TimeOfDay)
+		if err != nil {
+			// If parsing fails, use default 9 AM
+			if now.Hour() != 9 {
+				return false
+			}
+		} else {
+			// Check if current time matches expected time (within 1 hour window)
+			currentHour := now.Hour()
+			expectedHour := expectedTime.Hour()
+			if currentHour != expectedHour {
+				return false
+			}
+		}
+	} else {
+		// Default to 9 AM if not specified
+		if now.Hour() != 9 {
+			return false
+		}
+	}
+
+	// Check if we've already sent an email recently (within the last 23 hours)
+	// This prevents duplicate emails if the scheduler runs multiple times
+	if schedule.LastSentAt != nil {
+		timeSinceLastSent := now.Sub(*schedule.LastSentAt)
+		if timeSinceLastSent < 23*time.Hour {
+			return false
+		}
+	}
+
+	return true
 }
 
 // sendWeeklyStockReportForAccount sends a weekly stock report for a specific account
@@ -204,6 +324,15 @@ func (s *Scheduler) sendWeeklyStockReportForAccount(account models.Account) {
 	if err := s.emailService.SendWeeklyStockReport(account, users, stockData); err != nil {
 		log.Printf("Failed to send weekly stock report for account %d: %v", account.ID, err)
 		return
+	}
+
+	// Update the LastSentAt timestamp for the email schedule
+	schedule, err := s.service.GetEmailScheduleByAccountAndType(account.ID, models.EmailTypeWeeklyReport)
+	if err == nil && schedule != nil {
+		now := time.Now()
+		if err := s.service.UpdateEmailScheduleLastSent(schedule.ID, now); err != nil {
+			log.Printf("Failed to update LastSentAt for email schedule %d: %v", schedule.ID, err)
+		}
 	}
 
 	// Log successful email sending for each user
@@ -279,6 +408,15 @@ func (s *Scheduler) sendWeeklySupplyChainReportForAccount(account models.Account
 	if err := s.emailService.SendWeeklySupplyChainReport(account, users, supplyChainData); err != nil {
 		log.Printf("Failed to send weekly supply chain report for account %d: %v", account.ID, err)
 		return
+	}
+
+	// Update the LastSentAt timestamp for the email schedule
+	schedule, err := s.service.GetEmailScheduleByAccountAndType(account.ID, models.EmailTypeWeeklySupplyChain)
+	if err == nil && schedule != nil {
+		now := time.Now()
+		if err := s.service.UpdateEmailScheduleLastSent(schedule.ID, now); err != nil {
+			log.Printf("Failed to update LastSentAt for email schedule %d: %v", schedule.ID, err)
+		}
 	}
 
 	// Log successful email sending for each user
@@ -486,4 +624,49 @@ func (s *Scheduler) logEmailSuccess(accountID int, userID *int, toEmail, subject
 	// For now, we'll just log to console
 	log.Printf("Email sent successfully: %s to %s", emailType, toEmail)
 	_ = emailLog
+}
+
+// createDefaultEmailSchedules creates default email schedules for an account if none exist
+func (s *Scheduler) createDefaultEmailSchedules(accountID int) error {
+	// Check if account already has email schedules
+	schedules, err := s.service.GetEmailSchedulesByAccount(accountID)
+	if err != nil {
+		return err
+	}
+
+	// If schedules exist, don't create defaults
+	if len(schedules) > 0 {
+		return nil
+	}
+
+	// Create default weekly stock report schedule (Monday at 9 AM)
+	weeklyStockSchedule := &models.EmailSchedule{
+		AccountID: accountID,
+		EmailType: models.EmailTypeWeeklyReport,
+		Frequency: "weekly",
+		DayOfWeek: &[]int{1}[0], // Monday (0=Sunday, 1=Monday, etc.)
+		TimeOfDay: "09:00",
+		IsActive:  true,
+	}
+
+	if err := s.service.CreateEmailSchedule(weeklyStockSchedule); err != nil {
+		return fmt.Errorf("failed to create default weekly stock schedule: %w", err)
+	}
+
+	// Create default weekly supply chain report schedule (Tuesday at 9 AM)
+	weeklySupplyChainSchedule := &models.EmailSchedule{
+		AccountID: accountID,
+		EmailType: models.EmailTypeWeeklySupplyChain,
+		Frequency: "weekly",
+		DayOfWeek: &[]int{2}[0], // Tuesday
+		TimeOfDay: "09:00",
+		IsActive:  true,
+	}
+
+	if err := s.service.CreateEmailSchedule(weeklySupplyChainSchedule); err != nil {
+		return fmt.Errorf("failed to create default weekly supply chain schedule: %w", err)
+	}
+
+	log.Printf("Created default email schedules for account %d", accountID)
+	return nil
 }

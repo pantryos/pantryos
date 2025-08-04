@@ -111,6 +111,7 @@ func runMigrations(db *gorm.DB) error {
 		&models.InventorySnapshot{}, // Historical inventory snapshots
 		&models.Delivery{},          // Delivery records for inventory replenishment
 		&models.AccountInvitation{}, // User invitations for account access
+		&models.EmailSchedule{},     // Email scheduling configuration
 	)
 }
 

@@ -551,3 +551,333 @@ func getBaseURL(c *gin.Context) string {
 	}
 	return fmt.Sprintf("%s://%s", scheme, c.Request.Host)
 }
+
+// EmailScheduleRequest represents the request body for creating/updating email schedules
+type EmailScheduleRequest struct {
+	EmailType  string `json:"email_type" binding:"required"`  // "weekly_stock_report", "weekly_supply_chain_report", "low_stock_alert"
+	Frequency  string `json:"frequency" binding:"required"`   // "weekly", "daily", "monthly"
+	DayOfWeek  *int   `json:"day_of_week"`                    // 0-6 (Sunday-Saturday) for weekly
+	DayOfMonth *int   `json:"day_of_month"`                   // 1-31 for monthly
+	TimeOfDay  string `json:"time_of_day" binding:"required"` // "09:00", "18:30"
+	IsActive   bool   `json:"is_active"`                      // Whether the schedule is active
+}
+
+// GetEmailSchedules handles GET /api/accounts/:accountID/email-schedules
+// Returns all email schedules for an account
+func GetEmailSchedules(c *gin.Context) {
+	// Get account ID from URL parameter
+	accountIDStr := c.Param("accountID")
+	accountID, err := strconv.Atoi(accountIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account ID"})
+		return
+	}
+
+	// Get user from context (set by auth middleware)
+	user, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	// Validate account access
+	service := c.MustGet("service").(*database.Service)
+	if err := service.ValidateAccountAccess(accountID, user.(*models.User).AccountID); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		return
+	}
+
+	// Get email schedules for the account
+	schedules, err := service.GetEmailSchedulesByAccount(accountID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get email schedules"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"account_id": accountID,
+		"schedules":  schedules,
+	})
+}
+
+// GetEmailSchedule handles GET /api/accounts/:accountID/email-schedules/:emailType
+// Returns a specific email schedule for an account
+func GetEmailSchedule(c *gin.Context) {
+	// Get account ID from URL parameter
+	accountIDStr := c.Param("accountID")
+	accountID, err := strconv.Atoi(accountIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account ID"})
+		return
+	}
+
+	// Get email type from URL parameter
+	emailType := c.Param("emailType")
+
+	// Get user from context (set by auth middleware)
+	user, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	// Validate account access
+	service := c.MustGet("service").(*database.Service)
+	if err := service.ValidateAccountAccess(accountID, user.(*models.User).AccountID); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		return
+	}
+
+	// Get specific email schedule
+	schedule, err := service.GetEmailScheduleByAccountAndType(accountID, emailType)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Email schedule not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, schedule)
+}
+
+// CreateEmailSchedule handles POST /api/accounts/:accountID/email-schedules
+// Creates a new email schedule for an account
+func CreateEmailSchedule(c *gin.Context) {
+	// Get account ID from URL parameter
+	accountIDStr := c.Param("accountID")
+	accountID, err := strconv.Atoi(accountIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account ID"})
+		return
+	}
+
+	// Get user from context (set by auth middleware)
+	user, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	// Validate account access
+	service := c.MustGet("service").(*database.Service)
+	if err := service.ValidateAccountAccess(accountID, user.(*models.User).AccountID); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		return
+	}
+
+	// Parse request body
+	var req EmailScheduleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	// Validate email type
+	if !isValidEmailType(req.EmailType) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid email type"})
+		return
+	}
+
+	// Check if schedule already exists
+	existingSchedule, err := service.GetEmailScheduleByAccountAndType(accountID, req.EmailType)
+	if err == nil && existingSchedule != nil {
+		c.JSON(http.StatusConflict, gin.H{"error": "Email schedule already exists for this type"})
+		return
+	}
+
+	// Create new email schedule
+	schedule := &models.EmailSchedule{
+		AccountID:  accountID,
+		EmailType:  req.EmailType,
+		Frequency:  req.Frequency,
+		DayOfWeek:  req.DayOfWeek,
+		DayOfMonth: req.DayOfMonth,
+		TimeOfDay:  req.TimeOfDay,
+		IsActive:   req.IsActive,
+	}
+
+	if err := service.CreateEmailSchedule(schedule); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create email schedule"})
+		return
+	}
+
+	c.JSON(http.StatusCreated, schedule)
+}
+
+// UpdateEmailSchedule handles PUT /api/accounts/:accountID/email-schedules/:emailType
+// Updates an existing email schedule for an account
+func UpdateEmailSchedule(c *gin.Context) {
+	// Get account ID from URL parameter
+	accountIDStr := c.Param("accountID")
+	accountID, err := strconv.Atoi(accountIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account ID"})
+		return
+	}
+
+	// Get email type from URL parameter
+	emailType := c.Param("emailType")
+
+	// Get user from context (set by auth middleware)
+	user, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	// Validate account access
+	service := c.MustGet("service").(*database.Service)
+	if err := service.ValidateAccountAccess(accountID, user.(*models.User).AccountID); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		return
+	}
+
+	// Get existing schedule
+	schedule, err := service.GetEmailScheduleByAccountAndType(accountID, emailType)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Email schedule not found"})
+		return
+	}
+
+	// Parse request body
+	var req EmailScheduleRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		return
+	}
+
+	// Validate email type
+	if !isValidEmailType(req.EmailType) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid email type"})
+		return
+	}
+
+	// Update schedule fields
+	schedule.EmailType = req.EmailType
+	schedule.Frequency = req.Frequency
+	schedule.DayOfWeek = req.DayOfWeek
+	schedule.DayOfMonth = req.DayOfMonth
+	schedule.TimeOfDay = req.TimeOfDay
+	schedule.IsActive = req.IsActive
+
+	if err := service.UpdateEmailSchedule(schedule); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update email schedule"})
+		return
+	}
+
+	c.JSON(http.StatusOK, schedule)
+}
+
+// DeleteEmailSchedule handles DELETE /api/accounts/:accountID/email-schedules/:emailType
+// Deletes an email schedule for an account (effectively turns it off)
+func DeleteEmailSchedule(c *gin.Context) {
+	// Get account ID from URL parameter
+	accountIDStr := c.Param("accountID")
+	accountID, err := strconv.Atoi(accountIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account ID"})
+		return
+	}
+
+	// Get email type from URL parameter
+	emailType := c.Param("emailType")
+
+	// Get user from context (set by auth middleware)
+	user, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	// Validate account access
+	service := c.MustGet("service").(*database.Service)
+	if err := service.ValidateAccountAccess(accountID, user.(*models.User).AccountID); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		return
+	}
+
+	// Get existing schedule
+	schedule, err := service.GetEmailScheduleByAccountAndType(accountID, emailType)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Email schedule not found"})
+		return
+	}
+
+	// Delete the schedule
+	if err := service.DeleteEmailSchedule(schedule.ID); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete email schedule"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Email schedule deleted successfully"})
+}
+
+// ToggleEmailSchedule handles PATCH /api/accounts/:accountID/email-schedules/:emailType/toggle
+// Toggles the active status of an email schedule (turn on/off)
+func ToggleEmailSchedule(c *gin.Context) {
+	// Get account ID from URL parameter
+	accountIDStr := c.Param("accountID")
+	accountID, err := strconv.Atoi(accountIDStr)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account ID"})
+		return
+	}
+
+	// Get email type from URL parameter
+	emailType := c.Param("emailType")
+
+	// Get user from context (set by auth middleware)
+	user, exists := c.Get("user")
+	if !exists {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	// Validate account access
+	service := c.MustGet("service").(*database.Service)
+	if err := service.ValidateAccountAccess(accountID, user.(*models.User).AccountID); err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		return
+	}
+
+	// Get existing schedule
+	schedule, err := service.GetEmailScheduleByAccountAndType(accountID, emailType)
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Email schedule not found"})
+		return
+	}
+
+	// Toggle the active status
+	schedule.IsActive = !schedule.IsActive
+
+	if err := service.UpdateEmailSchedule(schedule); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update email schedule"})
+		return
+	}
+
+	status := "enabled"
+	if !schedule.IsActive {
+		status = "disabled"
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":    "Email schedule " + status + " successfully",
+		"is_active":  schedule.IsActive,
+		"email_type": emailType,
+		"account_id": accountID,
+	})
+}
+
+// isValidEmailType validates that the email type is supported
+func isValidEmailType(emailType string) bool {
+	validTypes := []string{
+		models.EmailTypeWeeklyReport,
+		models.EmailTypeWeeklySupplyChain,
+		models.EmailTypeLowStockAlert,
+	}
+
+	for _, validType := range validTypes {
+		if emailType == validType {
+			return true
+		}
+	}
+	return false
+}
