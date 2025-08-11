@@ -218,7 +218,7 @@ const ItemComparison: React.FC<ComparisonProps> = ({ open, onClose }) => {
   };
 
   const getChartComponent = () => {
-    if (comparisonData.length === 0) return null;
+    if (comparisonData.length === 0) return <></>;;
 
     const commonProps = {
       data: comparisonData[0].data,
@@ -318,7 +318,7 @@ const ItemComparison: React.FC<ComparisonProps> = ({ open, onClose }) => {
         );
       
       default:
-        return null;
+        return <></>;
     }
   };
 
@@ -356,11 +356,11 @@ const ItemComparison: React.FC<ComparisonProps> = ({ open, onClose }) => {
       <DialogContent dividers>
         <Grid container spacing={3}>
           {/* Controls */}
-          <Grid item xs={12}>
+          <Grid size={{xs:12}}>
             <Card>
               <CardContent>
                 <Grid container spacing={2} alignItems="center">
-                  <Grid item xs={12} sm={6} md={3}>
+                  <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                     <FormControl fullWidth size="small">
                       <InputLabel>Time Range</InputLabel>
                       <Select
@@ -375,7 +375,7 @@ const ItemComparison: React.FC<ComparisonProps> = ({ open, onClose }) => {
                     </FormControl>
                   </Grid>
                   
-                  <Grid item xs={12} sm={6} md={3}>
+                  <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                     <FormControl fullWidth size="small">
                       <InputLabel>Metric</InputLabel>
                       <Select
@@ -391,7 +391,7 @@ const ItemComparison: React.FC<ComparisonProps> = ({ open, onClose }) => {
                     </FormControl>
                   </Grid>
                   
-                  <Grid item xs={12} sm={6} md={3}>
+                  <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                     <FormControl fullWidth size="small">
                       <InputLabel>Chart Type</InputLabel>
                       <Select
@@ -407,7 +407,7 @@ const ItemComparison: React.FC<ComparisonProps> = ({ open, onClose }) => {
                     </FormControl>
                   </Grid>
                   
-                  <Grid item xs={12} sm={6} md={3}>
+                  <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                     <Button
                       fullWidth
                       variant="outlined"
@@ -424,7 +424,7 @@ const ItemComparison: React.FC<ComparisonProps> = ({ open, onClose }) => {
 
           {/* Error Alert */}
           {error && (
-            <Grid item xs={12}>
+            <Grid size={{xs:12}}>
               <Alert severity="error" action={
                 <Button color="inherit" size="small" onClick={loadInventoryItems}>
                   Retry
@@ -436,7 +436,7 @@ const ItemComparison: React.FC<ComparisonProps> = ({ open, onClose }) => {
           )}
 
           {/* Item Selection */}
-          <Grid item xs={12} md={4}>
+          <Grid size={{xs:12, md:4}}>
             <Card>
               <CardHeader title="Select Items to Compare" />
               <CardContent>
@@ -476,7 +476,7 @@ const ItemComparison: React.FC<ComparisonProps> = ({ open, onClose }) => {
           </Grid>
 
           {/* Chart */}
-          <Grid item xs={12} md={8}>
+          <Grid size={{xs:12, md:4}}>
             <Card>
               <CardHeader
                 title={`${getMetricLabel()} Comparison`}
@@ -502,7 +502,7 @@ const ItemComparison: React.FC<ComparisonProps> = ({ open, onClose }) => {
 
           {/* Selected Items Summary */}
           {selectedItems.length > 0 && (
-            <Grid item xs={12}>
+            <Grid size={{xs:12}}>
               <Card>
                 <CardHeader title="Selected Items Summary" />
                 <CardContent>
@@ -512,7 +512,7 @@ const ItemComparison: React.FC<ComparisonProps> = ({ open, onClose }) => {
                       const avgUtilization = item.data.reduce((sum, d) => sum + d.utilization, 0) / item.data.length;
                       
                       return (
-                        <Grid item xs={12} sm={6} md={4} key={item.item.id}>
+                        <Grid size={{ xs: 12, sm: 6, md: 3 }} key={item.item.id}>
                           <Card variant="outlined">
                             <CardContent>
                               <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>

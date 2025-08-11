@@ -566,7 +566,7 @@ type EmailScheduleRequest struct {
 // Returns all email schedules for an account
 func GetEmailSchedules(c *gin.Context) {
 	// Get account ID from URL parameter
-	accountIDStr := c.Param("accountID")
+	accountIDStr := c.Param("account_id")
 	accountID, err := strconv.Atoi(accountIDStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account ID"})
@@ -604,7 +604,7 @@ func GetEmailSchedules(c *gin.Context) {
 // Returns a specific email schedule for an account
 func GetEmailSchedule(c *gin.Context) {
 	// Get account ID from URL parameter
-	accountIDStr := c.Param("accountID")
+	accountIDStr := c.Param("account_id")
 	accountID, err := strconv.Atoi(accountIDStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account ID"})
@@ -642,7 +642,7 @@ func GetEmailSchedule(c *gin.Context) {
 // Creates a new email schedule for an account
 func CreateEmailSchedule(c *gin.Context) {
 	// Get account ID from URL parameter
-	accountIDStr := c.Param("accountID")
+	accountIDStr := c.Param("account_id")
 	accountID, err := strconv.Atoi(accountIDStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account ID"})
@@ -706,7 +706,7 @@ func CreateEmailSchedule(c *gin.Context) {
 // Updates an existing email schedule for an account
 func UpdateEmailSchedule(c *gin.Context) {
 	// Get account ID from URL parameter
-	accountIDStr := c.Param("accountID")
+	accountIDStr := c.Param("account_id")
 	accountID, err := strconv.Atoi(accountIDStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account ID"})
@@ -770,7 +770,7 @@ func UpdateEmailSchedule(c *gin.Context) {
 // Deletes an email schedule for an account (effectively turns it off)
 func DeleteEmailSchedule(c *gin.Context) {
 	// Get account ID from URL parameter
-	accountIDStr := c.Param("accountID")
+	accountIDStr := c.Param("account_id")
 	accountID, err := strconv.Atoi(accountIDStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account ID"})
@@ -814,7 +814,7 @@ func DeleteEmailSchedule(c *gin.Context) {
 // Toggles the active status of an email schedule (turn on/off)
 func ToggleEmailSchedule(c *gin.Context) {
 	// Get account ID from URL parameter
-	accountIDStr := c.Param("accountID")
+	accountIDStr := c.Param("account_id")
 	accountID, err := strconv.Atoi(accountIDStr)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account ID"})

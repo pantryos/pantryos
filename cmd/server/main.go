@@ -5,11 +5,13 @@ package main
 
 import (
 	"fmt"
+	"github.com/gin-contrib/cors"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/mnadev/pantryos/internal/api"
 	"github.com/mnadev/pantryos/internal/database"
@@ -59,6 +61,15 @@ func main() {
 	// Set up Gin router with default middleware
 	// Gin provides logging, recovery, and other useful middleware out of the box
 	router := gin.Default()
+
+	router.Use(cors.New(cors.Config{
+		AllowAllOrigins:  true, // DANGEROUS: For development only. In production, use AllowedOrigins.
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	// Setup API routes including authentication, organizations, and inventory endpoints
 	api.SetupRouter(router, db)

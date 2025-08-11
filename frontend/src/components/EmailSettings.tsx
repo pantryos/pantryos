@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { api } from '../services/api';
+import { apiService } from '../services/api';
 import './EmailSettings.css';
+import axios from 'axios';
 
 interface EmailSchedule {
   id: number;
@@ -65,7 +66,7 @@ const EmailSettings: React.FC = () => {
   const fetchSchedules = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/accounts/${user?.account_id}/email-schedules`);
+      const response = await axios.get(`/accounts/${user?.account_id}/email-schedules`);
       setSchedules(response.data.schedules);
       setError(null);
     } catch (err) {
@@ -78,7 +79,7 @@ const EmailSettings: React.FC = () => {
 
   const toggleSchedule = async (emailType: string) => {
     try {
-      const response = await api.patch(`/accounts/${user?.account_id}/email-schedules/${emailType}/toggle`);
+      const response = await axios.patch(`/accounts/${user?.account_id}/email-schedules/${emailType}/toggle`);
       setSchedules(prev => prev.map(schedule => 
         schedule.email_type === emailType 
           ? { ...schedule, is_active: response.data.is_active }
@@ -96,7 +97,7 @@ const EmailSettings: React.FC = () => {
     }
 
     try {
-      await api.delete(`/accounts/${user?.account_id}/email-schedules/${emailType}`);
+      await axios.delete(`/accounts/${user?.account_id}/email-schedules/${emailType}`);
       setSchedules(prev => prev.filter(schedule => schedule.email_type !== emailType));
     } catch (err) {
       setError('Failed to delete email schedule');
@@ -106,7 +107,7 @@ const EmailSettings: React.FC = () => {
 
   const createSchedule = async (scheduleData: EmailScheduleRequest) => {
     try {
-      const response = await api.post(`/accounts/${user?.account_id}/email-schedules`, scheduleData);
+      const response = await axios.post(`/accounts/${user?.account_id}/email-schedules`, scheduleData);
       setSchedules(prev => [...prev, response.data]);
       setShowCreateForm(false);
     } catch (err) {
@@ -117,7 +118,7 @@ const EmailSettings: React.FC = () => {
 
   const updateSchedule = async (emailType: string, scheduleData: EmailScheduleRequest) => {
     try {
-      const response = await api.put(`/accounts/${user?.account_id}/email-schedules/${emailType}`, scheduleData);
+      const response = await axios.put(`/accounts/${user?.account_id}/email-schedules/${emailType}`, scheduleData);
       setSchedules(prev => prev.map(schedule => 
         schedule.email_type === emailType ? response.data : schedule
       ));

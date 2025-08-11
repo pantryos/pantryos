@@ -12,7 +12,8 @@ import {
   UpdateInventoryItemRequest,
   CreateMenuItemRequest,
   CreateDeliveryRequest,
-  ApiResponse
+  ApiResponse,
+  StandardAPIResponse
 } from '../types/api';
 
 // API service class for communicating with the Go backend
@@ -79,8 +80,17 @@ class ApiService {
 
   // Inventory methods
   async getInventoryItems(): Promise<InventoryItem[]> {
-    const response: AxiosResponse<InventoryItem[]> = await this.api.get('/api/v1/inventory/items');
-    return response.data;
+    try {
+      // The backend now returns a standardized response with a 'data' field.
+      // The actual inventory items are inside an 'items' property of that 'data' field.
+      const response: AxiosResponse<StandardAPIResponse<InventoryItem[]>> = await this.api.get('/api/v1/inventory/items');
+
+      // Safely access the nested data. If it doesn't exist, default to an empty array.
+      return response.data.data || [];
+    } catch (error) {
+      console.error("Error fetching inventory items:", error);
+      return [];
+    }
   }
 
   async getLowStockItems(): Promise<InventoryItem[]> {
@@ -149,6 +159,11 @@ class ApiService {
     const response: AxiosResponse<InventorySnapshot> = await this.api.post('/api/v1/snapshots', snapshot);
     return response.data;
   }
+
+  // async getEmailSchedules(accountId: number): Promise<{ schedules: EmailSchedule[] }> {
+  //   const response: AxiosResponse<{ schedules: EmailSchedule[] }> = await this.api.get(`/accounts/${accountId}/email-schedules`);
+  //   return response.data;
+  // }
 
   // Utility methods
   setAuthToken(token: string): void {

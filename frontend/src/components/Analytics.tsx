@@ -14,27 +14,19 @@ import {
   IconButton,
   Menu,
   MenuItem,
-  Avatar,
-  Chip,
   CircularProgress,
   FormControl,
   InputLabel,
   Select,
-  TextField,
   ToggleButton,
   ToggleButtonGroup,
   Alert,
-  Divider,
   Stack,
   LinearProgress,
 } from '@mui/material';
 import {
   Analytics as AnalyticsIcon,
-  TrendingUp,
-  TrendingDown,
-  Remove,
   Compare,
-  FilterList,
   Refresh,
   AccountCircle,
   Logout,
@@ -48,9 +40,6 @@ import {
   Line,
   BarChart as RechartsBarChart,
   Bar,
-  PieChart as RechartsPieChart,
-  Pie,
-  Cell,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -64,7 +53,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import apiService from '../services/api';
-import { InventoryItem, Delivery, InventorySnapshot } from '../types/api';
+import { InventoryItem} from '../types/api';
 import ItemComparison from './ItemComparison';
 
 // Types for analytics data
@@ -328,7 +317,7 @@ const Analytics: React.FC = () => {
         );
       
       default:
-        return null;
+        return <></>;
     }
   };
 
@@ -391,7 +380,7 @@ const Analytics: React.FC = () => {
         {/* Controls */}
         <Paper sx={{ p: 3, mb: 3 }}>
           <Grid container spacing={3} alignItems="center">
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Time Range</InputLabel>
                 <Select
@@ -406,7 +395,7 @@ const Analytics: React.FC = () => {
               </FormControl>
             </Grid>
             
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <FormControl fullWidth size="small">
                 <InputLabel>Chart Type</InputLabel>
                 <Select
@@ -422,7 +411,7 @@ const Analytics: React.FC = () => {
               </FormControl>
             </Grid>
             
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Button
                 fullWidth
                 variant="outlined"
@@ -434,7 +423,7 @@ const Analytics: React.FC = () => {
               </Button>
             </Grid>
             
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                               <Button
                   fullWidth
                   variant="contained"
@@ -450,7 +439,7 @@ const Analytics: React.FC = () => {
         {/* Summary Statistics */}
         {summaryStats && (
           <Grid container spacing={3} sx={{ mb: 3 }}>
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Card>
                 <CardContent>
                   <Typography color="textSecondary" gutterBottom>
@@ -466,7 +455,7 @@ const Analytics: React.FC = () => {
               </Card>
             </Grid>
             
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Card>
                 <CardContent>
                   <Typography color="textSecondary" gutterBottom>
@@ -482,7 +471,7 @@ const Analytics: React.FC = () => {
               </Card>
             </Grid>
             
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Card>
                 <CardContent>
                   <Typography color="textSecondary" gutterBottom>
@@ -498,7 +487,7 @@ const Analytics: React.FC = () => {
               </Card>
             </Grid>
             
-            <Grid item xs={12} sm={6} md={3}>
+            <Grid size={{ xs: 12, sm: 6, md: 3 }}>
               <Card>
                 <CardContent>
                   <Typography color="textSecondary" gutterBottom>
@@ -518,7 +507,7 @@ const Analytics: React.FC = () => {
 
         {/* Main Chart */}
         <Grid container spacing={3}>
-          <Grid item xs={12} lg={8}>
+          <Grid size={{xs:12, lg:8}}>
             <Card>
               <CardHeader
                 title="Inventory Utilization Over Time"
@@ -557,7 +546,7 @@ const Analytics: React.FC = () => {
             </Card>
           </Grid>
           
-          <Grid item xs={12} lg={4}>
+          <Grid size={{xs:12, lg:4}}>
             <Stack spacing={3}>
               {/* Top Performing Items */}
               <Card>

@@ -27,18 +27,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Check if user is logged in on app start
   useEffect(() => {
-    const initializeAuth = async () => {
-      try {
-        if (apiService.isAuthenticated()) {
-          const currentUser = await apiService.getCurrentUser();
-          setUser(currentUser);
+    const initializeAuth = () => {
+      // Check for a stored token and user in localStorage first.
+      const token = apiService.getAuthToken();
+      const storedUser = localStorage.getItem('user');
+
+      if (token && storedUser) {
+        try {
+          // If a token exists, and we have a stored user object,
+          // assume they are authenticated for now.
+          const parsedUser: User = JSON.parse(storedUser);
+          setUser(parsedUser);
+        } catch (e) {
+          console.error('Failed to parse user from localStorage:', e);
+          apiService.clearAuthToken();
         }
-      } catch (error) {
-        console.error('Failed to get current user:', error);
-        apiService.clearAuthToken();
-      } finally {
-        setLoading(false);
       }
+
+      // Crucially, set loading to false after this initial synchronous check.
+      // The API interceptor will handle token validation on the next API call.
+      setLoading(false);
     };
 
     initializeAuth();
@@ -51,6 +59,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await apiService.login({ email, password });
       apiService.setAuthToken(response.token);
       setUser(response.user);
+      localStorage.setItem('user', JSON.stringify(response.user)); // Store the user object
     } catch (error) {
       console.error('Login failed:', error);
       throw error;
@@ -66,6 +75,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await apiService.register({ email, password });
       apiService.setAuthToken(response.token);
       setUser(response.user);
+      localStorage.setItem('user', JSON.stringify(response.user)); // Store the user object
     } catch (error) {
       console.error('Registration failed:', error);
       throw error;
@@ -104,4 +114,4 @@ export const useAuth = (): AuthContextType => {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
-}; 
+};

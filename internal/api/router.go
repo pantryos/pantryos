@@ -50,7 +50,7 @@ func SetupRouter(router *gin.Engine, db *database.DB) {
 		v1.POST("/inventory/items", inventoryHandler.CreateInventoryItem)
 		v1.GET("/inventory/items/:id", inventoryHandler.GetInventoryItem)
 		v1.PUT("/inventory/items/:id", inventoryHandler.UpdateInventoryItem)
-		v1.DELETE("/inventory/items/:id", inventoryHandler.DeleteInventoryItem)
+		v1.DELETE("/inventory/`items/:id", inventoryHandler.DeleteInventoryItem)
 
 		// Menu item routes
 		v1.GET("/menu/items", inventoryHandler.GetMenuItems)
@@ -76,11 +76,11 @@ func SetupRouter(router *gin.Engine, db *database.DB) {
 		v1.POST("/email/low-stock-alert/:account_id", emailHandler.SendLowStockAlert)
 
 		// Email schedule management routes
-		v1.GET("/accounts/:accountID/email-schedules", handlers.GetEmailSchedules)
-		v1.GET("/accounts/:accountID/email-schedules/:emailType", handlers.GetEmailSchedule)
-		v1.POST("/accounts/:accountID/email-schedules", handlers.CreateEmailSchedule)
-		v1.PUT("/accounts/:accountID/email-schedules/:emailType", handlers.UpdateEmailSchedule)
-		v1.DELETE("/accounts/:accountID/email-schedules/:emailType", handlers.DeleteEmailSchedule)
-		v1.PATCH("/accounts/:accountID/email-schedules/:emailType/toggle", handlers.ToggleEmailSchedule)
+		v1.GET("/accounts/:account_id/email-schedules", handlers.GetEmailSchedules)
+		v1.GET("/accounts/:account_id/email-schedules/:emailType", handlers.GetEmailSchedule)
+		v1.POST("/accounts/:account_id/email-schedules", handlers.CreateEmailSchedule)
+		v1.PUT("/accounts/:account_id/email-schedules/:emailType", handlers.UpdateEmailSchedule)
+		v1.DELETE("/accounts/:account_id/email-schedules/:emailType", handlers.DeleteEmailSchedule)
+		v1.PATCH("/accounts/:account_id/email-schedules/:emailType/toggle", handlers.ToggleEmailSchedule)
 	}
 }

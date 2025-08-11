@@ -5,6 +5,7 @@
 package handlers
 
 import (
+	helpers "github.com/mnadev/pantryos/internal/api/helper"
 	"net/http"
 	"strconv"
 
@@ -55,24 +56,35 @@ func NewInventoryHandler(db *database.DB) *InventoryHandler {
 //   - Scopes results to user's account only
 //   - Returns appropriate error codes for different failure scenarios
 func (h *InventoryHandler) GetInventoryItems(c *gin.Context) {
-	// Extract user ID from context (set by AuthMiddleware)
-	userID, _ := c.Get("userID")
-
-	// Retrieve user details from database
-	user, err := h.service.GetUser(userID.(int))
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+	// Safely retrieve the user ID from the context.
+	userIDInterface, exists := c.Get("userID")
+	if !exists {
+		helpers.ErrorResponse(c, http.StatusUnauthorized, "User ID not found in context")
+		return
+	}
+	userID, ok := userIDInterface.(int)
+	if !ok {
+		helpers.ErrorResponse(c, http.StatusInternalServerError, "Invalid user ID in context")
 		return
 	}
 
-	// Get current stock levels from latest snapshot
+	// Retrieve user details from database.
+	user, err := h.service.GetUser(userID)
+	if err != nil {
+		helpers.ErrorResponse(c, http.StatusNotFound, "User not found")
+		return
+	}
+
+	// Get current stock levels from latest snapshot.
 	itemsWithStock, err := h.service.GetInventoryItemsWithCurrentStock(user.AccountID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch inventory items with stock levels"})
+		helpers.ErrorResponse(c, http.StatusInternalServerError, "Failed to fetch inventory items with stock levels")
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"items": itemsWithStock})
+	// Use the new helper to send a standardized success response.
+	// The data is now wrapped inside a "data" field by the helper.
+	helpers.SuccessResponse(c, http.StatusOK, itemsWithStock)
 }
 
 // GetLowStockItems retrieves inventory items that are currently low on stock.

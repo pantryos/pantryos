@@ -10,6 +10,13 @@ export const BusinessType = {
 
 export type BusinessTypeValue = typeof BusinessType[keyof typeof BusinessType];
 
+// Define the API response structure to match your Go backend's standard response
+export interface StandardAPIResponse<T> {
+  status: string;
+  data: T;
+  message?: string;
+}
+
 export interface Organization {
   id: number;
   name: string;

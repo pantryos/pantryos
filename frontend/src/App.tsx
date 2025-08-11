@@ -39,6 +39,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 // Public route component that redirects to dashboard if already authenticated
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
+  console.log(isAuthenticated)
 
   if (loading) {
     return <div>Loading...</div>;

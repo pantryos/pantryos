@@ -54,16 +54,11 @@ const Inventory: React.FC = () => {
     max_weeks_stock: 8, // Default to 8 weeks
   });
 
-  // Load inventory items on component mount
-  useEffect(() => {
-    loadItems();
-  }, []);
-
-  // Load inventory items from API
   const loadItems = async () => {
     try {
       setLoading(true);
       const data = await apiService.getInventoryItems();
+      console.log('Loaded inventory items:', data);
       setItems(data);
     } catch (error) {
       setError('Failed to load inventory items');
@@ -73,11 +68,15 @@ const Inventory: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    loadItems();
+  }, []);
+
   // Filter items based on search term
-  const filteredItems = items.filter(item =>
+  const filteredItems = Array.isArray(items) ? items.filter(item =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     item.preferred_vendor.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ) : [];
 
   // Handle form input changes
   const handleInputChange = (field: keyof CreateInventoryItemRequest, value: string | number) => {
@@ -136,6 +135,7 @@ const Inventory: React.FC = () => {
 
   // Handle item deletion
   const handleDeleteClick = async (id: number) => {
+    // NOTE: Replace window.confirm with a custom modal for better UX
     if (window.confirm('Are you sure you want to delete this item?')) {
       try {
         await apiService.deleteInventoryItem(id);
@@ -167,16 +167,23 @@ const Inventory: React.FC = () => {
       field: 'cost_per_unit', 
       headerName: 'Cost/Unit', 
       width: 120,
-      valueFormatter: (params: any) => `$${params.value.toFixed(2)}`
+      valueFormatter: (params: any) => {const cost = Number(params);return !isNaN(cost) ? `$${cost.toFixed(2)}` : 'N/A';
+      }
     },
     { field: 'preferred_vendor', headerName: 'Vendor', width: 200 },
     { 
       field: 'current_stock', 
       headerName: 'Current Stock', 
       width: 120,
-      valueFormatter: (params: any) => `${params.value} ${params.row.unit}`,
+      valueFormatter: (params: any) => {
+        console.log('Current stock params:', params);
+        const stock = Number(params);
+        return !isNaN(stock) ? stock : 'N/A';
+      },
       cellClassName: (params) => {
-        if (params.value < params.row.min_stock_level) {
+        const currentStock = Number(params);
+        const minStock = Number(params.row.min_stock_level);
+        if (!isNaN(currentStock) && !isNaN(minStock) && currentStock < minStock) {
           return 'low-stock-cell';
         }
         return '';
@@ -186,25 +193,37 @@ const Inventory: React.FC = () => {
       field: 'min_stock_level', 
       headerName: 'Min Stock', 
       width: 120,
-      valueFormatter: (params: any) => params.value.toString()
+      valueFormatter: (params: any) => {
+        const value = Number(params);
+        return !isNaN(value) ? value.toString() : '';
+      }
     },
     { 
       field: 'max_stock_level', 
       headerName: 'Max Stock', 
       width: 120,
-      valueFormatter: (params: any) => params.value.toString()
+      valueFormatter: (params: any) => {
+        const value = Number(params);
+        return !isNaN(value) ? value.toString() : '';
+      }
     },
     { 
       field: 'min_weeks_stock', 
       headerName: 'Min Weeks', 
       width: 120,
-      valueFormatter: (params: any) => `${params.value} weeks`
+      valueFormatter: (params: any) => {
+        const value = Number(params);
+        return !isNaN(value) ? `${value} weeks` : '';
+      }
     },
     { 
       field: 'max_weeks_stock', 
       headerName: 'Max Weeks', 
       width: 120,
-      valueFormatter: (params: any) => `${params.value} weeks`
+      valueFormatter: (params: any) => {
+        const value = Number(params);
+        return !isNaN(value) ? `${value} weeks` : '';
+      }
     },
     {
       field: 'actions',
@@ -446,4 +465,4 @@ const Inventory: React.FC = () => {
   );
 };
 
-export default Inventory; 
+export default Inventory;

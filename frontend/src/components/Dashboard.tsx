@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   Box,
   Container,
@@ -16,21 +16,25 @@ import {
   MenuItem,
   Avatar,
   Chip,
-  CircularProgress
-} from '@mui/material';
+  CircularProgress,
+} from "@mui/material";
 import {
   Inventory as InventoryIcon,
   Restaurant as MenuIcon,
   LocalShipping as DeliveryIcon,
   Assessment as AnalyticsIcon,
   AccountCircle,
-  Logout
-} from '@mui/icons-material';
-import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import apiService from '../services/api';
-import { InventoryItem, MenuItem as MenuItemType, Delivery } from '../types/api';
-import LowStockBanner from './LowStockBanner';
+  Logout,
+} from "@mui/icons-material";
+import { useAuth } from "../contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import apiService from "../services/api";
+import {
+  InventoryItem,
+  MenuItem as MenuItemType,
+  Delivery,
+} from "../types/api";
+import LowStockBanner from "./LowStockBanner";
 
 // Dashboard component with overview cards and navigation
 // Provides quick access to all major features of the inventory system
@@ -55,15 +59,22 @@ const Dashboard: React.FC = () => {
           apiService.getDeliveries(),
         ]);
 
+        // Add a check to ensure deliveries is a valid array before filtering
+        const filteredDeliveries = Array.isArray(deliveries)
+          ? deliveries.filter(
+              (d) =>
+                new Date(d.delivery_date) >
+                new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+            )
+          : [];
+
         setStats({
           inventoryItems: inventory.length,
           menuItems: menu.length,
-          recentDeliveries: deliveries.filter(d => 
-            new Date(d.delivery_date) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-          ).length,
+          recentDeliveries: filteredDeliveries.length,
         });
       } catch (error) {
-        console.error('Failed to load dashboard stats:', error);
+        console.error("Failed to load dashboard stats:", error);
       } finally {
         setLoading(false);
       }
@@ -83,7 +94,7 @@ const Dashboard: React.FC = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate("/login");
   };
 
   // Navigation functions
@@ -93,7 +104,12 @@ const Dashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="100vh">
+      <Box
+        display="flex"
+        justifyContent="center"
+        alignItems="center"
+        minHeight="100vh"
+      >
         <CircularProgress />
       </Box>
     );
@@ -121,9 +137,7 @@ const Dashboard: React.FC = () => {
             onClose={handleMenuClose}
           >
             <MenuItem disabled>
-              <Typography variant="body2">
-                {user?.email}
-              </Typography>
+              <Typography variant="body2">{user?.email}</Typography>
             </MenuItem>
             <MenuItem onClick={handleLogout}>
               <Logout sx={{ mr: 1 }} />
@@ -141,7 +155,8 @@ const Dashboard: React.FC = () => {
             Welcome back!
           </Typography>
           <Typography variant="body1" color="text.secondary">
-            Manage your inventory, menu items, and track deliveries from your dashboard.
+            Manage your inventory, menu items, and track deliveries from your
+            dashboard.
           </Typography>
         </Paper>
 
@@ -149,26 +164,39 @@ const Dashboard: React.FC = () => {
         <LowStockBanner maxItems={5} />
 
         {/* Stats Cards */}
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3, mb: 4 }}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: {
+              xs: "1fr",
+              sm: "repeat(2, 1fr)",
+              md: "repeat(3, 1fr)",
+            },
+            gap: 3,
+            mb: 4,
+          }}
+        >
           <Card>
             <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box
+                display="flex"
+                alignItems="center"
+                justifyContent="space-between"
+              >
                 <Box>
                   <Typography color="textSecondary" gutterBottom>
                     Inventory Items
                   </Typography>
-                  <Typography variant="h4">
-                    {stats.inventoryItems}
-                  </Typography>
+                  <Typography variant="h4">{stats.inventoryItems}</Typography>
                 </Box>
                 <InventoryIcon color="primary" sx={{ fontSize: 40 }} />
               </Box>
             </CardContent>
             <CardActions>
-              <Button size="small" onClick={() => navigateTo('/inventory')}>
+              <Button size="small" onClick={() => navigateTo("/inventory")}>
                 View All
               </Button>
-              <Button size="small" onClick={() => navigateTo('/inventory/new')}>
+              <Button size="small" onClick={() => navigateTo("/inventory/new")}>
                 Add New
               </Button>
             </CardActions>
@@ -176,23 +204,25 @@ const Dashboard: React.FC = () => {
 
           <Card>
             <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box
+                display="flex"
+                alignItems="center"
+                justifyContent="space-between"
+              >
                 <Box>
                   <Typography color="textSecondary" gutterBottom>
                     Menu Items
                   </Typography>
-                  <Typography variant="h4">
-                    {stats.menuItems}
-                  </Typography>
+                  <Typography variant="h4">{stats.menuItems}</Typography>
                 </Box>
                 <MenuIcon color="primary" sx={{ fontSize: 40 }} />
               </Box>
             </CardContent>
             <CardActions>
-              <Button size="small" onClick={() => navigateTo('/menu')}>
+              <Button size="small" onClick={() => navigateTo("/menu")}>
                 View All
               </Button>
-              <Button size="small" onClick={() => navigateTo('/menu/new')}>
+              <Button size="small" onClick={() => navigateTo("/menu/new")}>
                 Add New
               </Button>
             </CardActions>
@@ -200,14 +230,16 @@ const Dashboard: React.FC = () => {
 
           <Card>
             <CardContent>
-              <Box display="flex" alignItems="center" justifyContent="space-between">
+              <Box
+                display="flex"
+                alignItems="center"
+                justifyContent="space-between"
+              >
                 <Box>
                   <Typography color="textSecondary" gutterBottom>
                     Recent Deliveries
                   </Typography>
-                  <Typography variant="h4">
-                    {stats.recentDeliveries}
-                  </Typography>
+                  <Typography variant="h4">{stats.recentDeliveries}</Typography>
                   <Typography variant="caption" color="textSecondary">
                     Last 7 days
                   </Typography>
@@ -216,10 +248,13 @@ const Dashboard: React.FC = () => {
               </Box>
             </CardContent>
             <CardActions>
-              <Button size="small" onClick={() => navigateTo('/deliveries')}>
+              <Button size="small" onClick={() => navigateTo("/deliveries")}>
                 View All
               </Button>
-              <Button size="small" onClick={() => navigateTo('/deliveries/new')}>
+              <Button
+                size="small"
+                onClick={() => navigateTo("/deliveries/new")}
+              >
                 Log Delivery
               </Button>
             </CardActions>
@@ -231,12 +266,22 @@ const Dashboard: React.FC = () => {
           <Typography variant="h6" gutterBottom>
             Quick Actions
           </Typography>
-          <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 2 }}>
+          <Box
+            sx={{
+              display: "grid",
+              gridTemplateColumns: {
+                xs: "1fr",
+                sm: "repeat(2, 1fr)",
+                md: "repeat(4, 1fr)",
+              },
+              gap: 2,
+            }}
+          >
             <Button
               fullWidth
               variant="outlined"
               startIcon={<InventoryIcon />}
-              onClick={() => navigateTo('/inventory/new')}
+              onClick={() => navigateTo("/inventory")}
               sx={{ height: 56 }}
             >
               Add Inventory Item
@@ -245,7 +290,7 @@ const Dashboard: React.FC = () => {
               fullWidth
               variant="outlined"
               startIcon={<MenuIcon />}
-              onClick={() => navigateTo('/menu/new')}
+              onClick={() => navigateTo("/menu/new")}
               sx={{ height: 56 }}
             >
               Add Menu Item
@@ -254,7 +299,7 @@ const Dashboard: React.FC = () => {
               fullWidth
               variant="outlined"
               startIcon={<DeliveryIcon />}
-              onClick={() => navigateTo('/deliveries/new')}
+              onClick={() => navigateTo("/deliveries/new")}
               sx={{ height: 56 }}
             >
               Log Delivery
@@ -263,7 +308,7 @@ const Dashboard: React.FC = () => {
               fullWidth
               variant="outlined"
               startIcon={<AnalyticsIcon />}
-              onClick={() => navigateTo('/analytics')}
+              onClick={() => navigateTo("/analytics")}
               sx={{ height: 56 }}
             >
               View Analytics
@@ -275,4 +320,4 @@ const Dashboard: React.FC = () => {
   );
 };
 
-export default Dashboard; 
+export default Dashboard;
