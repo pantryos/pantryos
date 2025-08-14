@@ -4,6 +4,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"gorm.io/gorm"
 	"time"
 )
 
@@ -166,6 +167,26 @@ type Delivery struct {
 	DeliveryDate    time.Time `json:"delivery_date" gorm:"not null;index"`
 	Cost            float64   `json:"cost" gorm:"not null;default:0"`
 	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
+}
+
+type Sale struct {
+	gorm.Model
+	AccountID    int        `json:"account_id" gorm:"not null;index"`
+	SaleDate     time.Time  `json:"sale_date" gorm:"not null"`
+	TotalRevenue float64    `json:"total_revenue"`
+	TotalCost    float64    `json:"total_cost"`
+	TotalProfit  float64    `json:"total_profit"`
+	Notes        string     `json:"notes"`
+	Items        []SaleItem `json:"items"`
+}
+
+type SaleItem struct {
+	SaleID      uint     `json:"sale_id" gorm:"not null"`
+	MenuItemID  uint     `json:"menu_item_id" gorm:"not null"`
+	MenuItem    MenuItem `json:"menu_item"`
+	Quantity    int      `json:"quantity"`
+	PriceAtSale float64  `json:"price_at_sale"`
+	CostAtSale  float64  `json:"cost_at_sale"`
 }
 
 // Order represents a purchase order for inventory items

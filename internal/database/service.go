@@ -7,6 +7,8 @@ package database
 
 import (
 	"errors"
+	"fmt"
+	"log"
 	"time"
 
 	"github.com/mnadev/pantryos/internal/models"
@@ -36,6 +38,10 @@ type Service struct {
 	deliveries DeliveryRepository
 	// inventorySnapshots handles historical inventory level tracking
 	inventorySnapshots InventorySnapshotRepository
+	//sale
+	sales SaleRepository
+	//recipes
+	recipes RecipeRepository
 	// accountInvitations handles user invitation management
 	accountInvitations AccountInvitationRepository
 	// categories handles item categorization and organization
@@ -62,9 +68,11 @@ func NewService(db *DB) *Service {
 		menuItems:          NewMenuItemRepository(db),
 		deliveries:         NewDeliveryRepository(db),
 		inventorySnapshots: NewInventorySnapshotRepository(db),
+		sales:              NewSaleRepository(db),
+		recipes:            NewRecipeRepository(db),
 		accountInvitations: NewAccountInvitationRepository(db),
 		categories:         NewCategoryRepository(db),
-		emailSchedules:    NewEmailScheduleRepository(db),
+		emailSchedules:     NewEmailScheduleRepository(db),
 	}
 }
 
@@ -320,6 +328,7 @@ func (s *Service) DeleteAccount(id int) error {
 //   - Users are created with default role "user"
 func (s *Service) CreateUser(user *models.User) error {
 	// Validate that the parent account exists
+	fmt.Println(user.AccountID)
 	_, err := s.accounts.GetByID(user.AccountID)
 	if err != nil {
 		return errors.New("invalid account ID")
@@ -536,33 +545,70 @@ type InventoryItemWithStock struct {
 //   - []InventoryItemWithStock: List of inventory items with current stock levels
 //   - error: Any error that occurred during retrieval
 func (s *Service) GetInventoryItemsWithCurrentStock(accountID int) ([]InventoryItemWithStock, error) {
-	// Get all inventory items for the account
+	// === LANGKAH DASAR: Ambil semua master item ===
 	items, err := s.inventoryItems.GetByAccountID(accountID)
 	if err != nil {
 		return nil, err
 	}
 
-	// Get the latest inventory snapshot
+	// Buat map untuk menampung stok yang akan dihitung.
+	// Ini akan menjadi "buku besar" sementara kita.
+	stockMap := make(map[int]float64)
+
+	// === LANGKAH 1: Ambil Saldo Awal dari Snapshot Terbaru ===
+	snapshotTimestamp := time.Time{} // Waktu default (awal mula) jika tidak ada snapshot
 	latestSnapshot, err := s.inventorySnapshots.GetLatestByAccountID(accountID)
-	if err != nil {
-		// If no snapshot exists, return items with zero stock
-		if err == gorm.ErrRecordNotFound {
-			result := make([]InventoryItemWithStock, len(items))
-			for i, item := range items {
-				result[i] = InventoryItemWithStock{
-					InventoryItem: item,
-					CurrentStock:  0,
-				}
-			}
-			return result, nil
+
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, err // Error lain selain "tidak ditemukan" adalah masalah
+	}
+
+	if err == nil { // Jika snapshot ditemukan
+		snapshotTimestamp = latestSnapshot.Timestamp
+		// Salin semua data stok dari snapshot ke map kita
+		for itemID, quantity := range latestSnapshot.Counts {
+			stockMap[itemID] = quantity
 		}
+	}
+
+	// === LANGKAH 2: Tambahkan Semua Pengiriman (DELIVERY) Sejak Snapshot ===
+	// Asumsi: Anda membuat fungsi ini di repository delivery Anda.
+	deliveries, err := s.deliveries.GetByAccountIDAfterDate(accountID, snapshotTimestamp)
+	if err != nil {
+		return nil, err
+	}
+	for _, delivery := range deliveries {
+		stockMap[delivery.InventoryItemID] += delivery.Quantity
+	}
+
+	// === LANGKAH 3: Kurangi Semua Penjualan (SALE) Sejak Snapshot ===
+	// Asumsi: Anda membuat fungsi ini di repository sale Anda.
+	sales, err := s.sales.GetByAccountIDAfterDate(accountID, snapshotTimestamp)
+	if err != nil {
 		return nil, err
 	}
 
-	// Create a map of item ID to current stock from the snapshot
-	stockMap := latestSnapshot.Counts
+	// Ini adalah bagian yang paling kompleks.
+	// Untuk setiap item yang terjual, kita perlu tahu resepnya untuk mengurangi stok bahan baku.
+	for _, sale := range sales {
+		for _, saleItem := range sale.Items {
+			// Asumsi: Anda punya fungsi untuk mengambil resep sebuah menu item.
+			// Ini perlu dioptimalkan agar tidak query ke DB di dalam loop (N+1 problem).
+			recipeIngredients, err := s.recipes.GetIngredientsByMenuItemID(saleItem.MenuItemID)
+			if err != nil {
+				// Log error tapi jangan hentikan proses, agar stok lain tetap terhitung
+				log.Printf("Warning: could not get recipe for menu item %d: %v", saleItem.MenuItemID, err)
+				continue
+			}
 
-	// Create result with current stock information
+			for _, ingredient := range recipeIngredients {
+				totalConsumed := ingredient.Quantity * float64(saleItem.Quantity)
+				stockMap[int(ingredient.InventoryItemID)] -= totalConsumed
+			}
+		}
+	}
+
+	// === LANGKAH FINAL: Gabungkan Hasil ===
 	result := make([]InventoryItemWithStock, len(items))
 	for i, item := range items {
 		currentStock := 0.0

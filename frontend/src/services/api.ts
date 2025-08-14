@@ -13,7 +13,8 @@ import {
   CreateMenuItemRequest,
   CreateDeliveryRequest,
   ApiResponse,
-  StandardAPIResponse
+  StandardAPIResponse,
+  Category
 } from '../types/api';
 
 // API service class for communicating with the Go backend
@@ -78,14 +79,15 @@ class ApiService {
     return response.data;
   }
 
-  // Inventory methods
+  //fetch categories
+  async getActiveCategories(): Promise<Category[]> {
+    const response: AxiosResponse<StandardAPIResponse<Category[]>> = await this.api.get('/api/v1/categories/active');
+    return response.data.data || [];
+  }
+ 
   async getInventoryItems(): Promise<InventoryItem[]> {
     try {
-      // The backend now returns a standardized response with a 'data' field.
-      // The actual inventory items are inside an 'items' property of that 'data' field.
       const response: AxiosResponse<StandardAPIResponse<InventoryItem[]>> = await this.api.get('/api/v1/inventory/items');
-
-      // Safely access the nested data. If it doesn't exist, default to an empty array.
       return response.data.data || [];
     } catch (error) {
       console.error("Error fetching inventory items:", error);
@@ -94,8 +96,8 @@ class ApiService {
   }
 
   async getLowStockItems(): Promise<InventoryItem[]> {
-    const response: AxiosResponse<InventoryItem[]> = await this.api.get('/api/v1/inventory/items/low-stock');
-    return response.data;
+    const response: AxiosResponse<StandardAPIResponse<InventoryItem[]>> = await this.api.get('/api/v1/inventory/items/low-stock');
+    return response.data.data || [];
   }
 
   async getInventoryItem(id: number): Promise<InventoryItem> {

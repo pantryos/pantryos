@@ -50,7 +50,7 @@ func SetupRouter(router *gin.Engine, db *database.DB) {
 		v1.POST("/inventory/items", inventoryHandler.CreateInventoryItem)
 		v1.GET("/inventory/items/:id", inventoryHandler.GetInventoryItem)
 		v1.PUT("/inventory/items/:id", inventoryHandler.UpdateInventoryItem)
-		v1.DELETE("/inventory/`items/:id", inventoryHandler.DeleteInventoryItem)
+		v1.DELETE("/inventory/items/:id", inventoryHandler.DeleteInventoryItem)
 
 		// Menu item routes
 		v1.GET("/menu/items", inventoryHandler.GetMenuItems)

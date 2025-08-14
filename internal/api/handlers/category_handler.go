@@ -4,6 +4,7 @@
 package handlers
 
 import (
+	helpers "github.com/mnadev/pantryos/internal/api/helper"
 	"net/http"
 	"strconv"
 
@@ -42,34 +43,44 @@ func NewCategoryHandler(db *database.DB) *CategoryHandler {
 // Authorization: User must be authenticated and have access to the account
 //
 // Response:
-//   - 200 OK: List of categories for the user's account
-//   - 401 Unauthorized: User not authenticated
-//   - 404 Not Found: User not found in database
-//   - 500 Internal Server Error: Database or service error
 //
-// Security notes:
-//   - Validates user authentication
-//   - Scopes results to user's account only
-//   - Returns appropriate error codes for different failure scenarios
+//	All responses are wrapped in the standard APIResponse structure.
+//	- Success: { "success": true, "message": "...", "data": [...] }
+//	- Error:   { "success": false, "message": "...", "error": { "code": "...", "details": "..." } }
+//
+// Status Codes:
+//   - 200 OK: Categories retrieved successfully. The 'data' field contains a list of categories.
+//   - 401 Unauthorized: User not authenticated.
+//   - 404 Not Found: User associated with token not found in the database.
+//   - 500 Internal Server Error: Database or other service error.
 func (h *CategoryHandler) GetCategories(c *gin.Context) {
 	// Extract user ID from context (set by AuthMiddleware)
-	userID, _ := c.Get("userID")
+	userIDInterface, exists := c.Get("userID")
+	if !exists {
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User ID not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
+		return
+	}
+	userID := userIDInterface.(int)
 
-	// Retrieve user details from database
-	user, err := h.service.GetUser(userID.(int))
+	// Retrieve user details from database to get the AccountID
+	user, err := h.service.GetUser(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		errDetails := helpers.APIError{Code: "USER_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "User not found.", errDetails)
 		return
 	}
 
 	// Get all categories for the account
 	categories, err := h.service.GetCategoriesByAccount(user.AccountID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch categories"})
+		errDetails := helpers.APIError{Code: "DB_FETCH_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to fetch categories.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"categories": categories})
+	// Return a 200 OK response with the list of categories in the data field.
+	helpers.Success(c.Writer, http.StatusOK, "Categories retrieved successfully.", categories)
 }
 
 // GetActiveCategories retrieves only active categories for the authenticated user's account.
@@ -80,34 +91,44 @@ func (h *CategoryHandler) GetCategories(c *gin.Context) {
 // Authorization: User must be authenticated and have access to the account
 //
 // Response:
-//   - 200 OK: List of active categories for the user's account
-//   - 401 Unauthorized: User not authenticated
-//   - 404 Not Found: User not found in database
-//   - 500 Internal Server Error: Database or service error
 //
-// Security notes:
-//   - Validates user authentication
-//   - Scopes results to user's account only
-//   - Returns appropriate error codes for different failure scenarios
+//	All responses are wrapped in the standard APIResponse structure.
+//	- Success: { "success": true, "message": "...", "data": [...] }
+//	- Error:   { "success": false, "message": "...", "error": { "code": "...", "details": "..." } }
+//
+// Status Codes:
+//   - 200 OK: Active categories retrieved successfully. The 'data' field contains a list of active categories.
+//   - 401 Unauthorized: User not authenticated.
+//   - 404 Not Found: User associated with token not found in the database.
+//   - 500 Internal Server Error: Database or other service error.
 func (h *CategoryHandler) GetActiveCategories(c *gin.Context) {
 	// Extract user ID from context (set by AuthMiddleware)
-	userID, _ := c.Get("userID")
+	userIDInterface, exists := c.Get("userID")
+	if !exists {
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User ID not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
+		return
+	}
+	userID := userIDInterface.(int)
 
-	// Retrieve user details from database
-	user, err := h.service.GetUser(userID.(int))
+	// Retrieve user details from database to get the AccountID
+	user, err := h.service.GetUser(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		errDetails := helpers.APIError{Code: "USER_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "User not found.", errDetails)
 		return
 	}
 
 	// Get active categories for the account
 	categories, err := h.service.GetActiveCategoriesByAccount(user.AccountID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch active categories"})
+		errDetails := helpers.APIError{Code: "DB_FETCH_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to fetch active categories.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"categories": categories})
+	// Return a 200 OK response with the list of active categories in the data field.
+	helpers.Success(c.Writer, http.StatusOK, "Active categories retrieved successfully.", categories)
 }
 
 // CreateCategory creates a new category for the authenticated user's account.
@@ -117,53 +138,58 @@ func (h *CategoryHandler) GetActiveCategories(c *gin.Context) {
 // Authentication: Required (JWT token in Authorization header)
 // Authorization: User must be authenticated and have access to the account
 //
-// Request Body: JSON object with category details
-//   - name: Category name (string, required)
-//   - description: Category description (string, optional)
-//   - color: Hex color code for UI display (string, optional, default: #6B7280)
-//   - is_active: Whether the category is active (bool, optional, default: true)
-//
 // Response:
-//   - 201 Created: Category created successfully
-//   - 400 Bad Request: Invalid request body or validation error
-//   - 401 Unauthorized: User not authenticated
-//   - 404 Not Found: User not found in database
-//   - 500 Internal Server Error: Database or service error
 //
-// Security notes:
-//   - Validates user authentication
-//   - Automatically sets account ID from authenticated user
-//   - Validates JSON request body format
-//   - Returns detailed error messages for debugging
+//	All responses are wrapped in the standard APIResponse structure.
+//	- Success: { "success": true, "message": "...", "data": ... }
+//	- Error:   { "success": false, "message": "...", "error": { "code": "...", "details": "..." } }
+//
+// Status Codes:
+//   - 201 Created: Category created successfully. The 'data' field contains the new category.
+//   - 400 Bad Request: Invalid request body or validation error.
+//   - 401 Unauthorized: User not authenticated.
+//   - 404 Not Found: User associated with token not found in the database.
+//   - 500 Internal Server Error: Database or other service error.
 func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 	// Extract user ID from context (set by AuthMiddleware)
-	userID, _ := c.Get("userID")
+	userIDInterface, exists := c.Get("userID")
+	if !exists {
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User ID not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
+		return
+	}
+	userID := userIDInterface.(int)
 
-	// Retrieve user details from database
-	user, err := h.service.GetUser(userID.(int))
+	// Retrieve user details from database to get the AccountID
+	user, err := h.service.GetUser(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		errDetails := helpers.APIError{Code: "USER_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "User not found.", errDetails)
 		return
 	}
 
 	// Parse and validate the JSON request body
 	var category models.Category
 	if err := c.ShouldBindJSON(&category); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid request body.", errDetails)
 		return
 	}
 
-	// Set account ID from authenticated user to ensure proper scoping
+	// Set account ID from the authenticated user to ensure proper scoping
 	category.AccountID = user.AccountID
 
 	// Create the category in the database
 	err = h.service.CreateCategory(&category)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create category: " + err.Error()})
+		// Consider checking for a unique constraint violation to return a 409 Conflict status.
+		errDetails := helpers.APIError{Code: "DB_INSERT_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to create category.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"category": category})
+	// Return a 201 Created response with the newly created category.
+	helpers.Success(c.Writer, http.StatusCreated, "Category created successfully.", category)
 }
 
 // GetCategory retrieves a specific category by ID.
@@ -177,44 +203,60 @@ func (h *CategoryHandler) CreateCategory(c *gin.Context) {
 //   - id: The category ID to retrieve (integer)
 //
 // Response:
-//   - 200 OK: Category details
-//   - 400 Bad Request: Invalid category ID format
-//   - 401 Unauthorized: User not authenticated
-//   - 403 Forbidden: Category does not belong to user's account
-//   - 404 Not Found: Category not found or user not found
 //
-// Security notes:
-//   - Validates user authentication
-//   - Validates category ID format
-//   - Ensures category belongs to user's account (authorization)
-//   - Returns appropriate error codes for different scenarios
+//	All responses are wrapped in the standard APIResponse structure.
+//	- Success: { "success": true, "message": "...", "data": {...} }
+//	- Error:   { "success": false, "message": "...", "error": { "code": "...", "details": "..." } }
+//
+// Status Codes:
+//   - 200 OK: Category retrieved successfully. The 'data' field contains the category object.
+//   - 400 Bad Request: Invalid category ID format in URL.
+//   - 401 Unauthorized: User not authenticated.
+//   - 403 Forbidden: The requested category does not belong to the user's account.
+//   - 404 Not Found: The user or the category could not be found.
 func (h *CategoryHandler) GetCategory(c *gin.Context) {
-	userID, _ := c.Get("userID")
-	user, err := h.service.GetUser(userID.(int))
+	// Extract user ID from context (set by AuthMiddleware)
+	userIDInterface, exists := c.Get("userID")
+	if !exists {
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User ID not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
+		return
+	}
+	userID := userIDInterface.(int)
+
+	// Retrieve user details from database
+	user, err := h.service.GetUser(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		errDetails := helpers.APIError{Code: "USER_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "User not found.", errDetails)
 		return
 	}
 
+	// Parse and validate the category ID from the URL parameter
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid category ID"})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: "Category ID must be a valid integer."}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid Category ID.", errDetails)
 		return
 	}
 
+	// Retrieve the category from the database
 	category, err := h.service.GetCategory(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Category not found"})
+		errDetails := helpers.APIError{Code: "CATEGORY_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "Category not found.", errDetails)
 		return
 	}
 
-	// Check if category belongs to user's account
+	// Authorization check: Ensure the category belongs to the user's account
 	if category.AccountID != user.AccountID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		errDetails := helpers.APIError{Code: "FORBIDDEN", Details: "You do not have permission to access this category."}
+		helpers.Error(c.Writer, http.StatusForbidden, "Access denied.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"category": category})
+	// Return a 200 OK response with the category object in the data field.
+	helpers.Success(c.Writer, http.StatusOK, "Category retrieved successfully.", category)
 }
 
 // UpdateCategory updates an existing category.
@@ -227,69 +269,82 @@ func (h *CategoryHandler) GetCategory(c *gin.Context) {
 // URL Parameters:
 //   - id: The category ID to update (integer)
 //
-// Request Body: JSON object with updated category details
-//   - name: Category name (string, required)
-//   - description: Category description (string, optional)
-//   - color: Hex color code for UI display (string, optional)
-//   - is_active: Whether the category is active (bool, optional)
-//
 // Response:
-//   - 200 OK: Category updated successfully
-//   - 400 Bad Request: Invalid request body or validation error
-//   - 401 Unauthorized: User not authenticated
-//   - 403 Forbidden: Category does not belong to user's account
-//   - 404 Not Found: Category not found or user not found
-//   - 500 Internal Server Error: Database or service error
 //
-// Security notes:
-//   - Validates user authentication
-//   - Validates category ID format
-//   - Ensures category belongs to user's account (authorization)
-//   - Preserves account ID during update
+//	All responses are wrapped in the standard APIResponse structure.
+//	- Success: { "success": true, "message": "...", "data": {...} }
+//	- Error:   { "success": false, "message": "...", "error": { "code": "...", "details": "..." } }
+//
+// Status Codes:
+//   - 200 OK: Category updated successfully. The 'data' field contains the updated category object.
+//   - 400 Bad Request: Invalid category ID format or invalid request body.
+//   - 401 Unauthorized: User not authenticated.
+//   - 403 Forbidden: The category does not belong to the user's account.
+//   - 404 Not Found: The user or the category could not be found.
+//   - 500 Internal Server Error: Database or other service error.
 func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
-	userID, _ := c.Get("userID")
-	user, err := h.service.GetUser(userID.(int))
+	// Extract user ID from context (set by AuthMiddleware)
+	userIDInterface, exists := c.Get("userID")
+	if !exists {
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User ID not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
+		return
+	}
+	userID := userIDInterface.(int)
+
+	// Retrieve user details from database
+	user, err := h.service.GetUser(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		errDetails := helpers.APIError{Code: "USER_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "User not found.", errDetails)
 		return
 	}
 
+	// Parse and validate the category ID from the URL parameter
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid category ID"})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: "Category ID must be a valid integer."}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid Category ID.", errDetails)
 		return
 	}
 
-	// Get existing category
+	// Get existing category to verify ownership
 	existingCategory, err := h.service.GetCategory(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Category not found"})
+		errDetails := helpers.APIError{Code: "CATEGORY_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "Category not found.", errDetails)
 		return
 	}
 
-	// Check if category belongs to user's account
+	// Authorization check: Ensure the category belongs to the user's account
 	if existingCategory.AccountID != user.AccountID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		errDetails := helpers.APIError{Code: "FORBIDDEN", Details: "You do not have permission to modify this category."}
+		helpers.Error(c.Writer, http.StatusForbidden, "Access denied.", errDetails)
 		return
 	}
 
+	// Parse and validate the JSON request body with the updates
 	var category models.Category
 	if err := c.ShouldBindJSON(&category); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid request body.", errDetails)
 		return
 	}
 
-	// Preserve account ID and ID
+	// Preserve the original ID and AccountID to prevent them from being changed.
 	category.ID = id
 	category.AccountID = user.AccountID
 
+	// Update the category in the database
 	err = h.service.UpdateCategory(&category)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update category: " + err.Error()})
+		errDetails := helpers.APIError{Code: "DB_UPDATE_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to update category.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"category": category})
+	// Return a 200 OK response with the updated category object.
+	helpers.Success(c.Writer, http.StatusOK, "Category updated successfully.", category)
 }
 
 // DeleteCategory deletes a category by ID.
@@ -303,52 +358,71 @@ func (h *CategoryHandler) UpdateCategory(c *gin.Context) {
 //   - id: The category ID to delete (integer)
 //
 // Response:
-//   - 200 OK: Category deleted successfully
-//   - 400 Bad Request: Invalid category ID
-//   - 401 Unauthorized: User not authenticated
-//   - 403 Forbidden: Category does not belong to user's account
-//   - 404 Not Found: Category not found or user not found
-//   - 500 Internal Server Error: Database or service error
 //
-// Security notes:
-//   - Validates user authentication
-//   - Validates category ID format
-//   - Ensures category belongs to user's account (authorization)
-//   - Prevents deletion if category is still in use
+//	All responses are wrapped in the standard APIResponse structure.
+//	- Success: { "success": true, "message": "...", "data": null }
+//	- Error:   { "success": false, "message": "...", "error": { "code": "...", "details": "..." } }
+//
+// Status Codes:
+//   - 200 OK: Category deleted successfully.
+//   - 400 Bad Request: Invalid category ID format.
+//   - 401 Unauthorized: User not authenticated.
+//   - 403 Forbidden: The category does not belong to the user's account.
+//   - 404 Not Found: The user or the category could not be found.
+//   - 500 Internal Server Error: Database or service error.
 func (h *CategoryHandler) DeleteCategory(c *gin.Context) {
-	userID, _ := c.Get("userID")
-	user, err := h.service.GetUser(userID.(int))
+	// Extract user ID from context (set by AuthMiddleware)
+	userIDInterface, exists := c.Get("userID")
+	if !exists {
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User ID not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
+		return
+	}
+	userID := userIDInterface.(int)
+
+	// Retrieve user details from database
+	user, err := h.service.GetUser(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		errDetails := helpers.APIError{Code: "USER_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "User not found.", errDetails)
 		return
 	}
 
+	// Parse and validate the category ID from the URL parameter
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid category ID"})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: "Category ID must be a valid integer."}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid Category ID.", errDetails)
 		return
 	}
 
 	// Get existing category to check ownership
 	existingCategory, err := h.service.GetCategory(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Category not found"})
+		errDetails := helpers.APIError{Code: "CATEGORY_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "Category not found.", errDetails)
 		return
 	}
 
-	// Check if category belongs to user's account
+	// Authorization check: Ensure the category belongs to the user's account
 	if existingCategory.AccountID != user.AccountID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		errDetails := helpers.APIError{Code: "FORBIDDEN", Details: "You do not have permission to delete this category."}
+		helpers.Error(c.Writer, http.StatusForbidden, "Access denied.", errDetails)
 		return
 	}
 
+	// Attempt to delete the category
 	err = h.service.DeleteCategory(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete category: " + err.Error()})
+		// The service might return a specific error if the category is in use.
+		// This could be handled here to return a 409 Conflict status.
+		errDetails := helpers.APIError{Code: "DB_DELETE_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to delete category.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Category deleted successfully"})
+	// Return a 200 OK response with a success message.
+	helpers.Success(c.Writer, http.StatusOK, "Category deleted successfully.", nil)
 }
 
 // GetInventoryItemsByCategory retrieves all inventory items in a specific category.
@@ -362,52 +436,68 @@ func (h *CategoryHandler) DeleteCategory(c *gin.Context) {
 //   - id: The category ID to get items for (integer)
 //
 // Response:
-//   - 200 OK: List of inventory items in the category
-//   - 400 Bad Request: Invalid category ID format
-//   - 401 Unauthorized: User not authenticated
-//   - 403 Forbidden: Category does not belong to user's account
-//   - 404 Not Found: Category not found or user not found
-//   - 500 Internal Server Error: Database or service error
 //
-// Security notes:
-//   - Validates user authentication
-//   - Validates category ID format
-//   - Ensures category belongs to user's account (authorization)
-//   - Returns appropriate error codes for different scenarios
+//	All responses are wrapped in the standard APIResponse structure.
+//	- Success: { "success": true, "message": "...", "data": [...] }
+//	- Error:   { "success": false, "message": "...", "error": { "code": "...", "details": "..." } }
+//
+// Status Codes:
+//   - 200 OK: Inventory items retrieved successfully. The 'data' field contains a list of items.
+//   - 400 Bad Request: Invalid category ID format.
+//   - 401 Unauthorized: User not authenticated.
+//   - 403 Forbidden: The requested category does not belong to the user's account.
+//   - 404 Not Found: The user or the category could not be found.
+//   - 500 Internal Server Error: Database or other service error.
 func (h *CategoryHandler) GetInventoryItemsByCategory(c *gin.Context) {
-	userID, _ := c.Get("userID")
-	user, err := h.service.GetUser(userID.(int))
+	// Extract user ID from context (set by AuthMiddleware)
+	userIDInterface, exists := c.Get("userID")
+	if !exists {
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User ID not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
+		return
+	}
+	userID := userIDInterface.(int)
+
+	// Retrieve user details from database
+	user, err := h.service.GetUser(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		errDetails := helpers.APIError{Code: "USER_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "User not found.", errDetails)
 		return
 	}
 
+	// Parse and validate the category ID from the URL parameter
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid category ID"})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: "Category ID must be a valid integer."}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid Category ID.", errDetails)
 		return
 	}
 
-	// Verify category exists and belongs to user's account
+	// Verify category exists and belongs to the user's account
 	category, err := h.service.GetCategory(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Category not found"})
+		errDetails := helpers.APIError{Code: "CATEGORY_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "Category not found.", errDetails)
 		return
 	}
 
 	if category.AccountID != user.AccountID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		errDetails := helpers.APIError{Code: "FORBIDDEN", Details: "You do not have permission to access this category."}
+		helpers.Error(c.Writer, http.StatusForbidden, "Access denied.", errDetails)
 		return
 	}
 
-	// Get inventory items in the category
+	// Get inventory items in the specified category
 	items, err := h.service.GetInventoryItemsByCategory(user.AccountID, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch inventory items by category"})
+		errDetails := helpers.APIError{Code: "DB_FETCH_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to fetch inventory items.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"items": items})
+	// Return a 200 OK response with the list of items in the data field.
+	helpers.Success(c.Writer, http.StatusOK, "Inventory items retrieved successfully.", items)
 }
 
 // GetMenuItemsByCategory retrieves all menu items in a specific category.
@@ -421,50 +511,66 @@ func (h *CategoryHandler) GetInventoryItemsByCategory(c *gin.Context) {
 //   - id: The category ID to get items for (integer)
 //
 // Response:
-//   - 200 OK: List of menu items in the category
-//   - 400 Bad Request: Invalid category ID format
-//   - 401 Unauthorized: User not authenticated
-//   - 403 Forbidden: Category does not belong to user's account
-//   - 404 Not Found: Category not found or user not found
-//   - 500 Internal Server Error: Database or service error
 //
-// Security notes:
-//   - Validates user authentication
-//   - Validates category ID format
-//   - Ensures category belongs to user's account (authorization)
-//   - Returns appropriate error codes for different scenarios
+//	All responses are wrapped in the standard APIResponse structure.
+//	- Success: { "success": true, "message": "...", "data": [...] }
+//	- Error:   { "success": false, "message": "...", "error": { "code": "...", "details": "..." } }
+//
+// Status Codes:
+//   - 200 OK: Menu items retrieved successfully. The 'data' field contains a list of menu items.
+//   - 400 Bad Request: Invalid category ID format.
+//   - 401 Unauthorized: User not authenticated.
+//   - 403 Forbidden: The requested category does not belong to the user's account.
+//   - 404 Not Found: The user or the category could not be found.
+//   - 500 Internal Server Error: Database or other service error.
 func (h *CategoryHandler) GetMenuItemsByCategory(c *gin.Context) {
-	userID, _ := c.Get("userID")
-	user, err := h.service.GetUser(userID.(int))
+	// Extract user ID from context (set by AuthMiddleware)
+	userIDInterface, exists := c.Get("userID")
+	if !exists {
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User ID not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
+		return
+	}
+	userID := userIDInterface.(int)
+
+	// Retrieve user details from database
+	user, err := h.service.GetUser(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		errDetails := helpers.APIError{Code: "USER_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "User not found.", errDetails)
 		return
 	}
 
+	// Parse and validate the category ID from the URL parameter
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid category ID"})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: "Category ID must be a valid integer."}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid Category ID.", errDetails)
 		return
 	}
 
-	// Verify category exists and belongs to user's account
+	// Verify category exists and belongs to the user's account
 	category, err := h.service.GetCategory(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Category not found"})
+		errDetails := helpers.APIError{Code: "CATEGORY_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "Category not found.", errDetails)
 		return
 	}
 
 	if category.AccountID != user.AccountID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		errDetails := helpers.APIError{Code: "FORBIDDEN", Details: "You do not have permission to access this category."}
+		helpers.Error(c.Writer, http.StatusForbidden, "Access denied.", errDetails)
 		return
 	}
 
-	// Get menu items in the category
+	// Get menu items in the specified category
 	items, err := h.service.GetMenuItemsByCategoryID(user.AccountID, id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch menu items by category"})
+		errDetails := helpers.APIError{Code: "DB_FETCH_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to fetch menu items.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"items": items})
+	// Return a 200 OK response with the list of menu items in the data field.
+	helpers.Success(c.Writer, http.StatusOK, "Menu items retrieved successfully.", items)
 }

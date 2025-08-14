@@ -15,7 +15,8 @@ import {
   CircularProgress,
   AppBar,
   Toolbar,
-  InputAdornment
+  InputAdornment,
+  MenuItem
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -28,7 +29,7 @@ import {
 import { DataGrid, GridColDef, GridActionsCellItem } from '@mui/x-data-grid';
 import { useNavigate } from 'react-router-dom';
 import apiService from '../services/api';
-import { InventoryItem, CreateInventoryItemRequest, UpdateInventoryItemRequest } from '../types/api';
+import { InventoryItem, CreateInventoryItemRequest, UpdateInventoryItemRequest, Category } from '../types/api';
 import ItemUsageAnalytics from './ItemUsageAnalytics';
 
 // Inventory management component with full CRUD operations
@@ -36,6 +37,7 @@ import ItemUsageAnalytics from './ItemUsageAnalytics';
 const Inventory: React.FC = () => {
   const navigate = useNavigate();
   const [items, setItems] = useState<InventoryItem[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -52,13 +54,13 @@ const Inventory: React.FC = () => {
     max_stock_level: 0,
     min_weeks_stock: 2, // Default to 2 weeks
     max_weeks_stock: 8, // Default to 8 weeks
+    category_id: undefined,
   });
 
   const loadItems = async () => {
     try {
       setLoading(true);
       const data = await apiService.getInventoryItems();
-      console.log('Loaded inventory items:', data);
       setItems(data);
     } catch (error) {
       setError('Failed to load inventory items');
@@ -68,8 +70,18 @@ const Inventory: React.FC = () => {
     }
   };
 
+  const loadCategories = async () => {
+    try {
+      const data = await apiService.getActiveCategories();
+      setCategories(data || []);
+    } catch (error) {
+      console.error('Failed to load categories:', error);
+    }
+  };
+
   useEffect(() => {
     loadItems();
+    loadCategories();
   }, []);
 
   // Filter items based on search term
@@ -79,7 +91,7 @@ const Inventory: React.FC = () => {
   ) : [];
 
   // Handle form input changes
-  const handleInputChange = (field: keyof CreateInventoryItemRequest, value: string | number) => {
+  const handleInputChange = (field: keyof CreateInventoryItemRequest, value: string | number | undefined) => {
     setFormData(prev => ({
       ...prev,
       [field]: value
@@ -98,6 +110,7 @@ const Inventory: React.FC = () => {
       max_stock_level: 0,
       min_weeks_stock: 2, // Default to 2 weeks
       max_weeks_stock: 8, // Default to 8 weeks
+      category_id: undefined,
     });
     setDialogOpen(true);
   };
@@ -114,6 +127,7 @@ const Inventory: React.FC = () => {
       max_stock_level: item.max_stock_level,
       min_weeks_stock: item.min_weeks_stock,
       max_weeks_stock: item.max_weeks_stock,
+      category_id: item.category_id,
     });
     setDialogOpen(true);
   };
@@ -121,13 +135,18 @@ const Inventory: React.FC = () => {
   // Handle form submission (create or update)
   const handleSubmit = async () => {
     try {
+      const payload = {
+        ...formData,
+        category_id: formData.category_id ? Number(formData.category_id) : undefined,
+      };
+
       if (editingItem) {
-        await apiService.updateInventoryItem(editingItem.id, formData as UpdateInventoryItemRequest);
+        await apiService.updateInventoryItem(editingItem.id, payload as UpdateInventoryItemRequest);
       } else {
-        await apiService.createInventoryItem(formData);
+        await apiService.createInventoryItem(payload);
       }
       setDialogOpen(false);
-      loadItems(); // Reload items
+      loadItems();
     } catch (error: any) {
       setError(error.response?.data?.error || 'Failed to save item');
     }
@@ -176,7 +195,6 @@ const Inventory: React.FC = () => {
       headerName: 'Current Stock', 
       width: 120,
       valueFormatter: (params: any) => {
-        console.log('Current stock params:', params);
         const stock = Number(params);
         return !isNaN(stock) ? stock : 'N/A';
       },
@@ -223,6 +241,15 @@ const Inventory: React.FC = () => {
       valueFormatter: (params: any) => {
         const value = Number(params);
         return !isNaN(value) ? `${value} weeks` : '';
+      }
+    },
+    { 
+      field: 'category_id', 
+      headerName: 'Category', 
+      width: 150,
+      valueFormatter: (params) => {
+        const category = categories.find(cat => cat.id === params);
+        return category ? category.name : 'N/A';
       }
     },
     {
@@ -357,6 +384,22 @@ const Inventory: React.FC = () => {
                 margin="normal"
                 required
               />
+              <TextField
+              select
+              fullWidth
+              label="Category"
+              value={formData.category_id || ''}
+              onChange={(e) => handleInputChange('category_id', e.target.value ? parseInt(e.target.value) : undefined)}
+              margin="normal"
+            >
+              <MenuItem value="">
+              </MenuItem>
+              {categories.map((category) => (
+                <MenuItem key={category.id} value={category.id}>
+                  {category.name}
+                </MenuItem>
+              ))}
+            </TextField>
               <TextField
                 fullWidth
                 label="Unit"

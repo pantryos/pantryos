@@ -47,6 +47,17 @@ export interface Account {
   updated_at: string;
 }
 
+export interface Category {
+  id: number;
+  account_id: number;
+  name: string;
+  description: string;
+  color: string; 
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface InventoryItem {
   id: number;
   account_id: number;
@@ -59,6 +70,7 @@ export interface InventoryItem {
   min_weeks_stock: number; // Minimum weeks of stock to maintain
   max_weeks_stock: number; // Maximum weeks of stock to maintain
   current_stock: number; // Current stock level from latest snapshot
+  category_id?: number;
 }
 
 export interface MenuItem {
@@ -157,6 +169,7 @@ export interface AuthResponse {
   user: User;
 }
 
+
 // Form types for creating/updating items
 export interface CreateInventoryItemRequest {
   name: string;
@@ -168,6 +181,7 @@ export interface CreateInventoryItemRequest {
   min_weeks_stock: number; // Minimum weeks of stock to maintain
   max_weeks_stock: number; // Maximum weeks of stock to maintain
   current_stock?: number; // Optional - defaults to 0 if not provided
+  category_id?: number;
 }
 
 export interface UpdateInventoryItemRequest extends CreateInventoryItemRequest {

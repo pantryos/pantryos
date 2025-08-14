@@ -65,6 +65,15 @@ type DeliveryRepository interface {
 	GetByDateRange(accountID int, startDate, endDate time.Time) ([]models.Delivery, error)
 	Update(delivery *models.Delivery) error
 	Delete(id int) error
+	GetByAccountIDAfterDate(id int, timestamp time.Time) ([]models.Delivery, error)
+}
+
+type SaleRepository interface {
+	GetByAccountIDAfterDate(accountID int, afterDate time.Time) ([]models.Sale, error)
+}
+
+type RecipeRepository interface {
+	GetIngredientsByMenuItemID(menuItemID uint) ([]models.RecipeIngredient, error)
 }
 
 type InventorySnapshotRepository interface {
@@ -448,6 +457,24 @@ func (r *deliveryRepository) Delete(id int) error {
 	return r.db.Delete(&models.Delivery{}, id).Error
 }
 
+// GetByAccountIDAfterDate retrieves all deliveries for a specific account
+// that occurred after the given timestamp. This is crucial for the hybrid
+// stock calculation model.
+func (r *deliveryRepository) GetByAccountIDAfterDate(accountID int, afterDate time.Time) ([]models.Delivery, error) {
+	var deliveries []models.Delivery
+
+	// Query finds deliveries for the account where the delivery_date is more recent than the provided timestamp.
+	err := r.db.Where("account_id = ? AND delivery_date > ?", accountID, afterDate).
+		Order("delivery_date asc"). // Ordering chronologically is good practice for processing transactions.
+		Find(&deliveries).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return deliveries, nil
+}
+
 // Inventory snapshot repository implementation
 type inventorySnapshotRepository struct {
 	db *DB
@@ -509,9 +536,52 @@ func (r *inventorySnapshotRepository) Delete(id int) error {
 	return r.db.Delete(&models.InventorySnapshot{}, id).Error
 }
 
+// sale
+type saleRepository struct {
+	db *DB
+}
+
+func NewSaleRepository(db *DB) SaleRepository {
+	return &saleRepository{db: db}
+}
+
+func (r *saleRepository) GetByAccountIDAfterDate(accountID int, afterDate time.Time) ([]models.Sale, error) {
+	var sales []models.Sale
+
+	err := r.db.Preload("Items").
+		Where("account_id = ? AND sale_date > ?", accountID, afterDate).
+		Order("sale_date asc").
+		Find(&sales).Error
+
+	if err != nil {
+		return nil, err
+	}
+
+	return sales, nil
+}
+
 // Order repository implementation
 type orderRepository struct {
 	db *DB
+}
+
+type recipeRepository struct {
+	db *DB
+}
+
+func NewRecipeRepository(db *DB) RecipeRepository {
+	return &recipeRepository{db: db}
+}
+
+func (r *recipeRepository) GetIngredientsByMenuItemID(menuItemID uint) ([]models.RecipeIngredient, error) {
+	var ingredients []models.RecipeIngredient
+
+	err := r.db.Where("menu_item_id = ?", menuItemID).Find(&ingredients).Error
+	if err != nil {
+		return nil, err
+	}
+
+	return ingredients, nil
 }
 
 func NewOrderRepository(db *DB) OrderRepository {

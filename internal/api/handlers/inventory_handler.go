@@ -56,35 +56,49 @@ func NewInventoryHandler(db *database.DB) *InventoryHandler {
 //   - Scopes results to user's account only
 //   - Returns appropriate error codes for different failure scenarios
 func (h *InventoryHandler) GetInventoryItems(c *gin.Context) {
-	// Safely retrieve the user ID from the context.
 	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		helpers.ErrorResponse(c, http.StatusUnauthorized, "User ID not found in context")
+		errDetails := helpers.APIError{
+			Code:    "UNAUTHORIZED",
+			Details: "User ID not found in request context. Ensure token is valid.",
+		}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "Authentication token is missing or invalid.", errDetails)
 		return
 	}
+
 	userID, ok := userIDInterface.(int)
 	if !ok {
-		helpers.ErrorResponse(c, http.StatusInternalServerError, "Invalid user ID in context")
+		errDetails := helpers.APIError{
+			Code:    "INTERNAL_SERVER_ERROR",
+			Details: "User ID in context is not of a valid type.",
+		}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "An internal server error occurred.", errDetails)
 		return
 	}
 
-	// Retrieve user details from database.
+	// Retrieve user details from the database.
 	user, err := h.service.GetUser(userID)
 	if err != nil {
-		helpers.ErrorResponse(c, http.StatusNotFound, "User not found")
+		errDetails := helpers.APIError{
+			Code:    "USER_NOT_FOUND",
+			Details: err.Error(),
+		}
+		helpers.Error(c.Writer, http.StatusNotFound, "User associated with token not found.", errDetails)
 		return
 	}
 
-	// Get current stock levels from latest snapshot.
+	// Get current stock levels from the latest snapshot.
 	itemsWithStock, err := h.service.GetInventoryItemsWithCurrentStock(user.AccountID)
 	if err != nil {
-		helpers.ErrorResponse(c, http.StatusInternalServerError, "Failed to fetch inventory items with stock levels")
+		errDetails := helpers.APIError{
+			Code:    "DB_FETCH_FAILED",
+			Details: err.Error(),
+		}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to retrieve inventory data.", errDetails)
 		return
 	}
 
-	// Use the new helper to send a standardized success response.
-	// The data is now wrapped inside a "data" field by the helper.
-	helpers.SuccessResponse(c, http.StatusOK, itemsWithStock)
+	helpers.Success(c.Writer, http.StatusOK, "Inventory items retrieved successfully.", itemsWithStock)
 }
 
 // GetLowStockItems retrieves inventory items that are currently low on stock.
@@ -95,34 +109,43 @@ func (h *InventoryHandler) GetInventoryItems(c *gin.Context) {
 // Authorization: User must be authenticated and have access to the account
 //
 // Response:
-//   - 200 OK: List of low stock inventory items
-//   - 401 Unauthorized: User not authenticated
-//   - 404 Not Found: User not found in database
-//   - 500 Internal Server Error: Database or service error
 //
-// Security notes:
-//   - Validates user authentication
-//   - Scopes results to user's account only
-//   - Returns appropriate error codes for different failure scenarios
+//	All responses are wrapped in the standard APIResponse structure.
+//	- Success: { "success": true, "message": "...", "data": [...] }
+//	- Error:   { "success": false, "message": "...", "error": { "code": "...", "details": "..." } }
+//
+// Status Codes:
+//   - 200 OK: Low stock items retrieved successfully. The 'data' field contains a list of items.
+//   - 401 Unauthorized: User not authenticated.
+//   - 404 Not Found: User associated with token not found in the database.
+//   - 500 Internal Server Error: Database or other service error.
 func (h *InventoryHandler) GetLowStockItems(c *gin.Context) {
 	// Extract user ID from context (set by AuthMiddleware)
-	userID, _ := c.Get("userID")
+	userIDInterface, exists := c.Get("userID")
+	if !exists {
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User ID not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
+		return
+	}
+	userID := userIDInterface.(int)
 
 	// Retrieve user details from database
-	user, err := h.service.GetUser(userID.(int))
+	user, err := h.service.GetUser(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		errDetails := helpers.APIError{Code: "USER_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "User not found.", errDetails)
 		return
 	}
 
-	// Get all inventory items with current stock levels
+	// Get all inventory items with their current stock levels
 	itemsWithStock, err := h.service.GetInventoryItemsWithCurrentStock(user.AccountID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch inventory items with stock levels"})
+		errDetails := helpers.APIError{Code: "DB_FETCH_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to fetch inventory data.", errDetails)
 		return
 	}
 
-	// Filter for low stock items
+	// Filter for low stock items in memory
 	var lowStockItems []database.InventoryItemWithStock
 	for _, item := range itemsWithStock {
 		if item.CurrentStock < item.MinStockLevel {
@@ -130,7 +153,8 @@ func (h *InventoryHandler) GetLowStockItems(c *gin.Context) {
 		}
 	}
 
-	c.JSON(http.StatusOK, lowStockItems)
+	// Return a 200 OK response with the list of low stock items.
+	helpers.Success(c.Writer, http.StatusOK, "Low stock items retrieved successfully.", lowStockItems)
 }
 
 // CreateInventoryItem creates a new inventory item for the authenticated user's account.
@@ -149,32 +173,40 @@ func (h *InventoryHandler) GetLowStockItems(c *gin.Context) {
 //   - max_stock_level: Maximum stock level (float64, optional)
 //
 // Response:
-//   - 201 Created: Inventory item created successfully
-//   - 400 Bad Request: Invalid request body or validation error
-//   - 401 Unauthorized: User not authenticated
-//   - 404 Not Found: User not found in database
-//   - 500 Internal Server Error: Database or service error
 //
-// Security notes:
-//   - Validates user authentication
-//   - Automatically sets account ID from authenticated user
-//   - Validates JSON request body format
-//   - Returns detailed error messages for debugging
+//	All responses are wrapped in the standard APIResponse structure.
+//	- Success: { "success": true, "message": "...", "data": ... }
+//	- Error:   { "success": false, "message": "...", "error": { "code": "...", "details": "..." } }
+//
+// Status Codes:
+//   - 201 Created: Inventory item created successfully. The 'data' field contains the new item.
+//   - 400 Bad Request: Invalid request body or validation error.
+//   - 401 Unauthorized: User not authenticated.
+//   - 404 Not Found: User associated with token not found in the database.
+//   - 500 Internal Server Error: Database or other service error.
 func (h *InventoryHandler) CreateInventoryItem(c *gin.Context) {
 	// Extract user ID from context (set by AuthMiddleware)
-	userID, _ := c.Get("userID")
+	userIDInterface, exists := c.Get("userID")
+	if !exists {
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User ID not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
+		return
+	}
+	userID := userIDInterface.(int)
 
-	// Retrieve user details from database
-	user, err := h.service.GetUser(userID.(int))
+	// Retrieve user details from database to get the AccountID
+	user, err := h.service.GetUser(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		errDetails := helpers.APIError{Code: "USER_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "User not found.", errDetails)
 		return
 	}
 
 	// Parse and validate the JSON request body
 	var item models.InventoryItem
 	if err := c.ShouldBindJSON(&item); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid request body.", errDetails)
 		return
 	}
 
@@ -184,11 +216,15 @@ func (h *InventoryHandler) CreateInventoryItem(c *gin.Context) {
 	// Create the inventory item in the database
 	err = h.service.CreateInventoryItem(&item)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create inventory item: " + err.Error()})
+		// Consider checking for specific database errors, like a unique constraint violation,
+		// which might warrant a 409 Conflict status code.
+		errDetails := helpers.APIError{Code: "DB_INSERT_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to create inventory item.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"item": item})
+	// Return a 201 Created response with the newly created item in the data field.
+	helpers.Success(c.Writer, http.StatusCreated, "Inventory item created successfully.", item)
 }
 
 // GetInventoryItem retrieves a specific inventory item by ID.
@@ -202,157 +238,211 @@ func (h *InventoryHandler) CreateInventoryItem(c *gin.Context) {
 //   - id: The inventory item ID to retrieve (integer)
 //
 // Response:
-//   - 200 OK: Inventory item details
-//   - 400 Bad Request: Invalid item ID format
-//   - 401 Unauthorized: User not authenticated
-//   - 403 Forbidden: Item does not belong to user's account
-//   - 404 Not Found: Item not found or user not found
 //
-// Security notes:
-//   - Validates user authentication
-//   - Validates item ID format
-//   - Ensures item belongs to user's account (authorization)
-//   - Returns appropriate error codes for different scenarios
+//	All responses are wrapped in the standard APIResponse structure.
+//	- Success: { "success": true, "message": "...", "data": {...} }
+//	- Error:   { "success": false, "message": "...", "error": { "code": "...", "details": "..." } }
+//
+// Status Codes:
+//   - 200 OK: Inventory item retrieved successfully. The 'data' field contains the item object.
+//   - 400 Bad Request: Invalid item ID format in URL.
+//   - 401 Unauthorized: User not authenticated.
+//   - 403 Forbidden: The requested item does not belong to the user's account.
+//   - 404 Not Found: The user or the item could not be found.
 func (h *InventoryHandler) GetInventoryItem(c *gin.Context) {
-	userID, _ := c.Get("userID")
-	user, err := h.service.GetUser(userID.(int))
+	// Extract user ID from context (set by AuthMiddleware)
+	userIDInterface, exists := c.Get("userID")
+	if !exists {
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User ID not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
+		return
+	}
+	userID := userIDInterface.(int)
+
+	// Retrieve user details from database
+	user, err := h.service.GetUser(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		errDetails := helpers.APIError{Code: "USER_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "User not found.", errDetails)
 		return
 	}
 
+	// Parse and validate the item ID from the URL parameter
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid item ID"})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: "Item ID must be a valid integer."}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid Item ID.", errDetails)
 		return
 	}
 
+	// Retrieve the inventory item from the database
 	item, err := h.service.GetInventoryItem(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Inventory item not found"})
+		errDetails := helpers.APIError{Code: "ITEM_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "Inventory item not found.", errDetails)
 		return
 	}
 
-	// Check if item belongs to user's account
+	// Authorization check: Ensure the item belongs to the user's account
 	if item.AccountID != user.AccountID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		errDetails := helpers.APIError{Code: "FORBIDDEN", Details: "You do not have permission to access this item."}
+		helpers.Error(c.Writer, http.StatusForbidden, "Access denied.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"item": item})
+	// Return a 200 OK response with the item object in the data field.
+	helpers.Success(c.Writer, http.StatusOK, "Inventory item retrieved successfully.", item)
 }
 
 // UpdateInventoryItem godoc
-// @Summary Update inventory item
-// @Description Update an existing inventory item
-// @Tags inventory
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path int true "Inventory item ID"
-// @Param item body models.InventoryItem true "Updated inventory item details"
-// @Success 200 {object} map[string]interface{} "Inventory item updated"
-// @Failure 400 {object} map[string]interface{} "Invalid request"
-// @Failure 401 {object} map[string]interface{} "User not authenticated"
-// @Failure 403 {object} map[string]interface{} "Access denied"
-// @Failure 404 {object} map[string]interface{} "Item not found"
-// @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/inventory/items/{id} [put]
+// @Summary      Update inventory item
+// @Description  Update an existing inventory item by its ID. The user must be authenticated and own the item.
+// @Tags         inventory
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id    path      int                     true  "Inventory Item ID"
+// @Param        item  body      models.InventoryItem    true  "Updated inventory item details"
+// @Success      200   {object}  helpers.APIResponse{data=models.InventoryItem}  "Inventory item updated successfully"
+// @Failure      400   {object}  helpers.APIResponse                           "Invalid request body or item ID"
+// @Failure      401   {object}  helpers.APIResponse                           "User not authenticated"
+// @Failure      403   {object}  helpers.APIResponse                           "Access denied"
+// @Failure      404   {object}  helpers.APIResponse                           "Item or user not found"
+// @Failure      500   {object}  helpers.APIResponse                           "Internal server error"
+// @Router       /api/v1/inventory/items/{id} [put]
 func (h *InventoryHandler) UpdateInventoryItem(c *gin.Context) {
-	userID, _ := c.Get("userID")
-	user, err := h.service.GetUser(userID.(int))
+	// Extract user ID from context (set by AuthMiddleware)
+	userIDInterface, exists := c.Get("userID")
+	if !exists {
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User ID not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
+		return
+	}
+	userID := userIDInterface.(int)
+
+	// Retrieve user details from database
+	user, err := h.service.GetUser(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		errDetails := helpers.APIError{Code: "USER_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "User not found.", errDetails)
 		return
 	}
 
+	// Parse and validate the item ID from the URL parameter
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid item ID"})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: "Item ID must be a valid integer."}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid Item ID.", errDetails)
 		return
 	}
 
-	// Get existing item
+	// Get existing item to verify ownership
 	existingItem, err := h.service.GetInventoryItem(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Inventory item not found"})
+		errDetails := helpers.APIError{Code: "ITEM_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "Inventory item not found.", errDetails)
 		return
 	}
 
-	// Check if item belongs to user's account
+	// Authorization check: Ensure the item belongs to the user's account
 	if existingItem.AccountID != user.AccountID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		errDetails := helpers.APIError{Code: "FORBIDDEN", Details: "You do not have permission to modify this item."}
+		helpers.Error(c.Writer, http.StatusForbidden, "Access denied.", errDetails)
 		return
 	}
 
+	// Parse and validate the JSON request body with the updates
 	var item models.InventoryItem
 	if err := c.ShouldBindJSON(&item); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid request body.", errDetails)
 		return
 	}
 
-	// Preserve account ID and ID
+	// Preserve the original ID and AccountID to prevent them from being changed.
 	item.ID = id
 	item.AccountID = user.AccountID
 
+	// Update the inventory item in the database
 	err = h.service.UpdateInventoryItem(&item)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update inventory item"})
+		errDetails := helpers.APIError{Code: "DB_UPDATE_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to update inventory item.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"item": item})
+	// Return a 200 OK response with the updated item object.
+	helpers.Success(c.Writer, http.StatusOK, "Inventory item updated successfully.", item)
 }
 
 // DeleteInventoryItem godoc
-// @Summary Delete inventory item
-// @Description Delete an inventory item by ID
-// @Tags inventory
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param id path int true "Inventory item ID"
-// @Success 200 {object} map[string]interface{} "Item deleted successfully"
-// @Failure 400 {object} map[string]interface{} "Invalid item ID"
-// @Failure 401 {object} map[string]interface{} "User not authenticated"
-// @Failure 403 {object} map[string]interface{} "Access denied"
-// @Failure 404 {object} map[string]interface{} "Item not found"
-// @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/inventory/items/{id} [delete]
+// @Summary      Delete inventory item
+// @Description  Delete an inventory item by its ID. The user must be authenticated and own the item.
+// @Tags         inventory
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        id   path      int  true  "Inventory Item ID"
+// @Success      200  {object}  helpers.APIResponse "Item deleted successfully"
+// @Failure      400  {object}  helpers.APIResponse "Invalid item ID"
+// @Failure      401  {object}  helpers.APIResponse "User not authenticated"
+// @Failure      403  {object}  helpers.APIResponse "Access denied"
+// @Failure      404  {object}  helpers.APIResponse "Item or user not found"
+// @Failure      500  {object}  helpers.APIResponse "Internal server error"
+// @Router       /api/v1/inventory/items/{id} [delete]
 func (h *InventoryHandler) DeleteInventoryItem(c *gin.Context) {
-	userID, _ := c.Get("userID")
-	user, err := h.service.GetUser(userID.(int))
+	// Extract user ID from context (set by AuthMiddleware)
+	userIDInterface, exists := c.Get("userID")
+	if !exists {
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User ID not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
+		return
+	}
+	userID := userIDInterface.(int)
+
+	// Retrieve user details from database
+	user, err := h.service.GetUser(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		errDetails := helpers.APIError{Code: "USER_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "User not found.", errDetails)
 		return
 	}
 
+	// Parse and validate the item ID from the URL parameter
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid item ID"})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: "Item ID must be a valid integer."}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid Item ID.", errDetails)
 		return
 	}
 
-	// Get existing item to check ownership
+	// Get existing item to verify ownership
 	existingItem, err := h.service.GetInventoryItem(id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Inventory item not found"})
+		errDetails := helpers.APIError{Code: "ITEM_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "Inventory item not found.", errDetails)
 		return
 	}
 
-	// Check if item belongs to user's account
+	// Authorization check: Ensure the item belongs to the user's account
 	if existingItem.AccountID != user.AccountID {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+		errDetails := helpers.APIError{Code: "FORBIDDEN", Details: "You do not have permission to delete this item."}
+		helpers.Error(c.Writer, http.StatusForbidden, "Access denied.", errDetails)
 		return
 	}
 
+	// Attempt to delete the inventory item
 	err = h.service.DeleteInventoryItem(id)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete inventory item"})
+		// The service layer might return a specific error if the item is in use
+		// (e.g., part of a recipe), which could be handled here to return a 409 Conflict.
+		errDetails := helpers.APIError{Code: "DB_DELETE_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to delete inventory item.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Inventory item deleted successfully"})
+	// Return a 200 OK response with a success message.
+	helpers.Success(c.Writer, http.StatusOK, "Inventory item deleted successfully.", nil)
 }
 
 // Menu Item Handlers
@@ -429,72 +519,102 @@ func (h *InventoryHandler) CreateMenuItem(c *gin.Context) {
 // Delivery Handlers
 
 // LogDelivery godoc
-// @Summary Log a new delivery
-// @Description Log an incoming inventory delivery
-// @Tags deliveries
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param delivery body models.Delivery true "Delivery details"
-// @Success 201 {object} map[string]interface{} "Delivery logged"
-// @Failure 400 {object} map[string]interface{} "Invalid request body"
-// @Failure 401 {object} map[string]interface{} "User not authenticated"
-// @Failure 404 {object} map[string]interface{} "User not found"
-// @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/deliveries [post]
+// @Summary      Log a new delivery
+// @Description  Log an incoming inventory delivery to update stock levels.
+// @Tags         deliveries
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        delivery  body      models.Delivery               true  "Delivery details"
+// @Success      201       {object}  helpers.APIResponse{data=models.Delivery}  "Delivery logged successfully"
+// @Failure      400       {object}  helpers.APIResponse                           "Invalid request body"
+// @Failure      401       {object}  helpers.APIResponse                           "User not authenticated"
+// @Failure      404       {object}  helpers.APIResponse                           "User not found"
+// @Failure      500       {object}  helpers.APIResponse                           "Internal server error"
+// @Router       /api/v1/deliveries [post]
 func (h *InventoryHandler) LogDelivery(c *gin.Context) {
-	userID, _ := c.Get("userID")
-	user, err := h.service.GetUser(userID.(int))
+	// Extract user ID from context (set by AuthMiddleware)
+	userIDInterface, exists := c.Get("userID")
+	if !exists {
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User ID not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
+		return
+	}
+	userID := userIDInterface.(int)
+
+	// Retrieve user details from database
+	user, err := h.service.GetUser(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		errDetails := helpers.APIError{Code: "USER_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "User not found.", errDetails)
 		return
 	}
 
+	// Parse and validate the JSON request body
 	var delivery models.Delivery
 	if err := c.ShouldBindJSON(&delivery); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid request body.", errDetails)
 		return
 	}
 
-	// Set account ID from authenticated user
+	// Set account ID from the authenticated user to ensure proper scoping
 	delivery.AccountID = user.AccountID
 
+	// Create the delivery record in the database
 	err = h.service.CreateDelivery(&delivery)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to log delivery: " + err.Error()})
+		// The service layer should validate if the inventory_item_id exists.
+		// A more specific error could be returned here (e.g., 400 Bad Request).
+		errDetails := helpers.APIError{Code: "DB_INSERT_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to log delivery.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"delivery": delivery})
+	// Return a 201 Created response with the new delivery object.
+	helpers.Success(c.Writer, http.StatusCreated, "Delivery logged successfully.", delivery)
 }
 
 // GetDeliveries godoc
-// @Summary Get all deliveries
-// @Description Retrieve all deliveries for the authenticated user's account
-// @Tags deliveries
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Success 200 {object} map[string]interface{} "List of deliveries"
-// @Failure 401 {object} map[string]interface{} "User not authenticated"
-// @Failure 404 {object} map[string]interface{} "User not found"
-// @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/deliveries [get]
+// @Summary      Get all deliveries
+// @Description  Retrieve all deliveries for the authenticated user's account.
+// @Tags         deliveries
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  helpers.APIResponse{data=[]models.Delivery}  "Successfully retrieved list of deliveries"
+// @Failure      401  {object}  helpers.APIResponse                            "Error: User not authenticated"
+// @Failure      404  {object}  helpers.APIResponse                            "Error: User not found"
+// @Failure      500  {object}  helpers.APIResponse                            "Error: Internal server error"
+// @Router       /api/v1/deliveries [get]
 func (h *InventoryHandler) GetDeliveries(c *gin.Context) {
-	userID, _ := c.Get("userID")
-	user, err := h.service.GetUser(userID.(int))
+	// Extract user ID from context (set by AuthMiddleware)
+	userIDInterface, exists := c.Get("userID")
+	if !exists {
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User ID not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
+		return
+	}
+	userID := userIDInterface.(int)
+
+	// Retrieve user details from the database
+	user, err := h.service.GetUser(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		errDetails := helpers.APIError{Code: "USER_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "User not found.", errDetails)
 		return
 	}
 
+	// Get all deliveries for the user's account
 	deliveries, err := h.service.GetDeliveriesByAccount(user.AccountID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch deliveries"})
+		errDetails := helpers.APIError{Code: "DB_FETCH_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to fetch deliveries.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"deliveries": deliveries})
+	// Return a 200 OK response with the list of deliveries in the data field.
+	helpers.Success(c.Writer, http.StatusOK, "Deliveries retrieved successfully.", deliveries)
 }
 
 // Snapshot Handlers

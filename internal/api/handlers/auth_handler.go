@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	helpers "github.com/mnadev/pantryos/internal/api/helper"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -55,34 +57,39 @@ type CreateInvitationRequest struct {
 func (h *AuthHandler) Register(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid request body provided.", errDetails)
 		return
 	}
 
 	// Check if user already exists
 	existingUser, err := h.service.GetUserByEmail(req.Email)
 	if err == nil && existingUser != nil {
-		c.JSON(http.StatusConflict, gin.H{"error": "User with this email already exists"})
+		errDetails := helpers.APIError{Code: "USER_ALREADY_EXISTS"}
+		helpers.Error(c.Writer, http.StatusConflict, "A user with this email already exists.", errDetails)
 		return
 	}
 
 	// Check if user has a pending invitation
 	invitation, err := h.service.GetPendingInvitationByEmail(req.Email)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No invitation found for this email. Please contact your account administrator."})
+		errDetails := helpers.APIError{Code: "INVITATION_NOT_FOUND"}
+		helpers.Error(c.Writer, http.StatusBadRequest, "No invitation found for this email. Please request one from your account administrator.", errDetails)
 		return
 	}
 
 	// Check if invitation has expired
 	if time.Now().After(invitation.ExpiresAt) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invitation has expired. Please contact your account administrator for a new invitation."})
+		errDetails := helpers.APIError{Code: "INVITATION_EXPIRED"}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Your invitation has expired. Please request a new one from your account administrator.", errDetails)
 		return
 	}
 
 	// Hash password
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to hash password"})
+		errDetails := helpers.APIError{Code: "INTERNAL_SERVER_ERROR", Details: "Failed to hash password"}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "An internal error occurred. Please try again later.", errDetails)
 		return
 	}
 
@@ -95,33 +102,24 @@ func (h *AuthHandler) Register(c *gin.Context) {
 
 	err = h.service.CreateUser(user)
 	if err != nil {
-		// Check for specific validation errors
-		if err.Error() == "invalid account ID" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid account ID"})
-			return
-		}
-		if err.Error() == "invalid user role" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid user role"})
-			return
-		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create user: " + err.Error()})
+		errDetails := helpers.APIError{Code: "USER_CREATION_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to create the user account.", errDetails)
 		return
 	}
 
 	// Mark invitation as accepted
-	invitation.Status = "accepted"
+	invitation.Status = models.AccountInvitationStatusAccepted
 	now := time.Now()
 	invitation.AcceptedAt = &now
 	err = h.service.UpdateInvitation(invitation)
 	if err != nil {
-		// Log the error but don't fail the registration
-		// The user is already created successfully
+		log.Printf("CRITICAL: Failed to update invitation %d after user registration: %v", invitation.ID, err)
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"message": "User registered successfully",
+	responseData := gin.H{
 		"user_id": user.ID,
-	})
+	}
+	helpers.Success(c.Writer, http.StatusCreated, "User registered successfully.", responseData)
 }
 
 // Login godoc
@@ -174,37 +172,45 @@ func (h *AuthHandler) Login(c *gin.Context) {
 }
 
 // GetCurrentUser godoc
-// @Summary Get current user information
-// @Description Get information about the currently authenticated user
-// @Tags authentication
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Success 200 {object} map[string]interface{} "User information"
-// @Failure 401 {object} map[string]interface{} "User not authenticated"
-// @Failure 404 {object} map[string]interface{} "User not found"
-// @Router /api/v1/me [get]
+// @Summary      Get current user information
+// @Description  Get information about the currently authenticated user based on the provided bearer token.
+// @Tags         authentication
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  helpers.APIResponse{data=GetUserSuccessData}  "Successfully retrieved user information"
+// @Failure      401  {object}  helpers.APIResponse                           "Error: User not authenticated"
+// @Failure      404  {object}  helpers.APIResponse                           "Error: User not found"
+// @Router       /api/v1/me [get]
 func (h *AuthHandler) GetCurrentUser(c *gin.Context) {
-	userID, exists := c.Get("userID")
+	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User ID not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
 		return
 	}
 
-	user, err := h.service.GetUser(userID.(int))
+	// We assume userID from the middleware is of the correct type.
+	// A robust implementation would also check the `ok` value from the type assertion.
+	userID := userIDInterface.(int)
+
+	user, err := h.service.GetUser(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		errDetails := helpers.APIError{Code: "USER_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "User not found.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"user": gin.H{
-			"id":         user.ID,
-			"email":      user.Email,
-			"account_id": user.AccountID,
-			"created_at": user.CreatedAt,
-		},
-	})
+	// Construct the specific data payload for the success response.
+	responseData := helpers.GetUserSuccessData{
+		ID:        user.ID,
+		Email:     user.Email,
+		AccountID: user.AccountID,
+		CreatedAt: user.CreatedAt,
+	}
+
+	// Use the standard success helper to return the data.
+	helpers.Success(c.Writer, http.StatusOK, "Current user retrieved successfully.", responseData)
 }
 
 // GetAvailableAccounts godoc
@@ -241,10 +247,18 @@ func (h *AuthHandler) GetAvailableAccounts(c *gin.Context) {
 // @Failure 500 {object} map[string]interface{} "Internal server error"
 // @Router /api/v1/accounts/{account_id}/invitations [post]
 func (h *AuthHandler) CreateInvitation(c *gin.Context) {
-	// Get current user
-	userID, exists := c.Get("user_id")
+	// Get current user ID from context
+	userIDInterface, exists := c.Get("userID")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User ID not found in context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
+		return
+	}
+
+	userID, ok := userIDInterface.(int)
+	if !ok {
+		errDetails := helpers.APIError{Code: "INTERNAL_SERVER_ERROR", Details: "User ID in context is not a valid integer."}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "An internal server error occurred.", errDetails)
 		return
 	}
 
@@ -252,7 +266,8 @@ func (h *AuthHandler) CreateInvitation(c *gin.Context) {
 	accountIDStr := c.Param("account_id")
 	accountID, err := strconv.Atoi(accountIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account ID"})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: "Account ID in URL must be a valid integer."}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid Account ID provided.", errDetails)
 		return
 	}
 
@@ -261,7 +276,8 @@ func (h *AuthHandler) CreateInvitation(c *gin.Context) {
 
 	var req CreateInvitationRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid request body.", errDetails)
 		return
 	}
 
@@ -269,20 +285,22 @@ func (h *AuthHandler) CreateInvitation(c *gin.Context) {
 	invitation := &models.AccountInvitation{
 		AccountID: accountID,
 		Email:     req.Email,
-		InvitedBy: userID.(int),
+		InvitedBy: userID,
 		ExpiresAt: req.ExpiresAt,
 	}
 
 	err = h.service.CreateInvitation(invitation)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create invitation: " + err.Error()})
+		errDetails := helpers.APIError{Code: "DB_INSERT_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to create invitation.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{
-		"message":       "Invitation created successfully",
+	// Use the Success helper for the final response
+	responseData := gin.H{
 		"invitation_id": invitation.ID,
-	})
+	}
+	helpers.Success(c.Writer, http.StatusCreated, "Invitation created successfully.", responseData)
 }
 
 // GetInvitationsByAccount godoc
@@ -297,24 +315,25 @@ func (h *AuthHandler) CreateInvitation(c *gin.Context) {
 // @Failure 500 {object} map[string]interface{} "Internal server error"
 // @Router /api/v1/accounts/{account_id}/invitations [get]
 func (h *AuthHandler) GetInvitationsByAccount(c *gin.Context) {
-	// Get account ID from URL
 	accountIDStr := c.Param("account_id")
 	accountID, err := strconv.Atoi(accountIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account ID"})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: "Account ID in URL must be a valid integer."}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid Account ID provided.", errDetails)
 		return
 	}
 
-	// TODO: Add authorization check - ensure user is admin of this account
-	// For now, we'll allow any authenticated user to view invitations
+	// TODO: Add authorization check - ensure the current user is an admin of this account.
 
+	// Retrieve invitations from the service layer
 	invitations, err := h.service.GetInvitationsByAccount(accountID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve invitations: " + err.Error()})
+		errDetails := helpers.APIError{Code: "DB_FETCH_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to retrieve invitations.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusOK, invitations)
+	helpers.Success(c.Writer, http.StatusOK, "Invitations retrieved successfully.", invitations)
 }
 
 // DeleteInvitation godoc
@@ -334,18 +353,20 @@ func (h *AuthHandler) DeleteInvitation(c *gin.Context) {
 	invitationIDStr := c.Param("invitation_id")
 	invitationID, err := strconv.Atoi(invitationIDStr)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid invitation ID"})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: "Invitation ID must be a valid integer."}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid Invitation ID.", errDetails)
 		return
 	}
 
-	// TODO: Add authorization check - ensure user is admin of this account
-	// For now, we'll allow any authenticated user to delete invitations
+	// TODO: Add authorization check to ensure the user is an admin of this account.
 
+	// Attempt to delete the invitation
 	err = h.service.DeleteInvitation(invitationID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete invitation: " + err.Error()})
+		errDetails := helpers.APIError{Code: "DB_DELETE_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to delete invitation.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Invitation deleted successfully"})
+	helpers.Success(c.Writer, http.StatusOK, "Invitation deleted successfully.", nil)
 }
