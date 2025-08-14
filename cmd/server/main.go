@@ -44,22 +44,16 @@ import (
 // @description Type "Bearer" followed by a space and JWT token.
 
 func main() {
-	// Get port from environment variable or use default
-	// This allows for easy deployment configuration
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	// Initialize Database connection
-	// This will connect to PostgreSQL in production or fail if ramsql is requested
 	db, err := database.Initialize()
 	if err != nil {
 		log.Fatalf("Could not initialize database: %v", err)
 	}
 
-	// Set up Gin router with default middleware
-	// Gin provides logging, recovery, and other useful middleware out of the box
 	router := gin.Default()
 
 	router.Use(cors.New(cors.Config{
@@ -71,28 +65,20 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	// Setup API routes including authentication, organizations, and inventory endpoints
 	api.SetupRouter(router, db)
 
-	// Initialize and start the email scheduler
 	emailScheduler := scheduler.NewScheduler(db)
 	emailScheduler.Start()
 
-	// Swagger documentation route for API exploration
-	// Available at /swagger/index.html when server is running
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// Health check endpoint for monitoring and load balancers
-	// Returns a simple status response to verify the service is running
 	router.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
 	})
 
-	// Set up graceful shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 
-	// Start the HTTP server in a goroutine
 	go func() {
 		fmt.Printf("Starting server on port %s\n", port)
 		fmt.Printf("Swagger documentation available at: http://localhost:%s/swagger/index.html\n", port)
@@ -101,12 +87,8 @@ func main() {
 		}
 	}()
 
-	// Wait for interrupt signal to gracefully shutdown the server
 	<-quit
 	log.Println("Shutting down server...")
-
-	// Stop the email scheduler
 	emailScheduler.Stop()
-
 	log.Println("Server stopped")
 }
