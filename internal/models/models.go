@@ -61,12 +61,13 @@ type Organization struct {
 // Users belong to specific accounts and have roles that determine their permissions
 // The password field is omitted from JSON responses for security
 type User struct {
-	ID        int       `json:"id" gorm:"primaryKey;autoIncrement"`
-	Email     string    `json:"email" gorm:"uniqueIndex;not null"`
-	Password  string    `json:"-" gorm:"not null"` // Omit from JSON responses for security
-	AccountID int       `json:"account_id" gorm:"not null;index"`
-	Role      string    `json:"role" gorm:"not null;default:'user'"` // user, manager, admin, org_admin
-	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+	ID         int       `json:"id" gorm:"primaryKey;autoIncrement"`
+	Email      string    `json:"email" gorm:"uniqueIndex;not null"`
+	Password   string    `json:"-" gorm:"not null"` // Omit from JSON responses for security
+	AccountID  int       `json:"account_id" gorm:"not null;index"`
+	IsVerified bool      `json:"isVerified" gorm:"not null;default:false"`
+	Role       string    `json:"role" gorm:"not null;default:'user'"` // user, manager, admin, org_admin
+	CreatedAt  time.Time `json:"created_at" gorm:"autoCreateTime"`
 	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
 }
 

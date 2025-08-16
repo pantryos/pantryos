@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	helpers "github.com/mnadev/pantryos/internal/api/helper"
 	"net/http"
 	"strconv"
 	"time"
@@ -28,64 +29,71 @@ func NewEmailHandler(db *database.DB) *EmailHandler {
 	}
 }
 
-// SendVerificationEmail sends a verification email to a user
-// @Summary Send verification email
-// @Description Send a verification email to a user
-// @Tags email
-// @Accept json
-// @Produce json
-// @Param user_id path int true "User ID"
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} map[string]interface{}
-// @Failure 500 {object} map[string]interface{}
-// @Router /email/verification/{user_id} [post]
+// SendVerificationEmail godoc
+// @Summary      Send verification email
+// @Description  Generates a new verification token and sends it to the user's email address.
+// @Tags         email
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        user_id  path      int                                         true  "User ID to send verification email to"
+// @Success      200      {object}  helpers.APIResponse                           "Verification email sent successfully"
+// @Failure      400      {object}  helpers.APIResponse                           "Invalid user ID format"
+// @Failure      404      {object}  helpers.APIResponse                           "User or associated account not found"
+// @Failure      500      {object}  helpers.APIResponse                           "Internal server error (e.g., failed to send email)"
+// @Router       /email/verification/{user_id} [post]
 func (h *EmailHandler) SendVerificationEmail(c *gin.Context) {
 	userID, err := strconv.Atoi(c.Param("user_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: "User ID must be a valid integer."}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid user ID.", errDetails)
 		return
 	}
 
-	// Get user from database
+	// Get user from the database
 	user, err := h.service.GetUser(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		errDetails := helpers.APIError{Code: "USER_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "User not found.", errDetails)
 		return
 	}
 
-	// Get account for the user
+	// Get the account for the user
 	account, err := h.service.GetAccount(user.AccountID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Account not found"})
+		errDetails := helpers.APIError{Code: "ACCOUNT_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "Account associated with the user not found.", errDetails)
 		return
 	}
 
-	// Generate verification token
+	// Generate a verification token
 	token, err := h.generateVerificationToken(userID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate verification token"})
+		errDetails := helpers.APIError{Code: "TOKEN_GENERATION_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to generate verification token.", errDetails)
 		return
 	}
 
-	// Create verification URL
+	// Create the full verification URL
 	baseURL := getBaseURL(c)
 	verificationURL := fmt.Sprintf("%s/verify-email?token=%s", baseURL, token)
 
-	// Send verification email
+	// Send the verification email via the email service
 	if err := h.emailService.SendVerificationEmail(*user, *account, verificationURL); err != nil {
-		// Log email failure
+		// Log the email failure for debugging purposes
 		h.logEmailFailure(user.AccountID, &userID, user.Email, "Verify Your PantryOS Account", models.EmailTypeVerification, err.Error())
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send verification email"})
+		errDetails := helpers.APIError{Code: "EMAIL_SEND_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to send verification email.", errDetails)
 		return
 	}
 
-	// Log successful email
+	// Log the successful email dispatch
 	h.logEmailSuccess(user.AccountID, &userID, user.Email, "Verify Your PantryOS Account", models.EmailTypeVerification)
 
-	c.JSON(http.StatusOK, gin.H{
-		"message": "Verification email sent successfully",
+	responseData := gin.H{
 		"user_id": userID,
-	})
+	}
+	helpers.Success(c.Writer, http.StatusOK, "Verification email sent successfully.", responseData)
 }
 
 // VerifyEmail verifies a user's email using a token
@@ -102,210 +110,237 @@ func (h *EmailHandler) SendVerificationEmail(c *gin.Context) {
 func (h *EmailHandler) VerifyEmail(c *gin.Context) {
 	token := c.Query("token")
 	if token == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Verification token is required"})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: "Verification token is required."}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Missing verification token.", errDetails)
 		return
 	}
 
 	// For now, we'll just return success since we need to add email verification methods to the service
 	// TODO: Implement proper token validation through service layer
-	c.JSON(http.StatusOK, gin.H{
+	responseData := gin.H{
 		"message": "Email verified successfully",
-	})
+	}
+	helpers.Success(c.Writer, http.StatusOK, "Email verified successfully. You can now log in.", responseData)
 }
 
-// SendWeeklyStockReport sends a weekly stock report email
-// @Summary Send weekly stock report
-// @Description Send a weekly stock report email to all users in an account
-// @Tags email
-// @Accept json
-// @Produce json
-// @Param account_id path int true "Account ID"
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} map[string]interface{}
-// @Failure 500 {object} map[string]interface{}
-// @Router /email/weekly-report/{account_id} [post]
+// SendWeeklyStockReport godoc
+// @Summary      Send weekly stock report
+// @Description  Triggers the sending of a weekly stock report email to all users in a specific account.
+// @Tags         email
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        account_id  path      int                                         true  "Account ID to send the report for"
+// @Success      200         {object}  helpers.APIResponse                           "Weekly stock report sent successfully"
+// @Failure      400         {object}  helpers.APIResponse                           "Invalid account ID format or no users in account"
+// @Failure      404         {object}  helpers.APIResponse                           "Account not found"
+// @Failure      500         {object}  helpers.APIResponse                           "Internal server error (e.g., failed to send email)"
+// @Router       /email/weekly-report/{account_id} [post]
 func (h *EmailHandler) SendWeeklyStockReport(c *gin.Context) {
 	accountID, err := strconv.Atoi(c.Param("account_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account ID"})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: "Account ID must be a valid integer."}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid Account ID.", errDetails)
 		return
 	}
 
-	// Get account
+	// Get the account from the database
 	account, err := h.service.GetAccount(accountID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Account not found"})
+		errDetails := helpers.APIError{Code: "ACCOUNT_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "Account not found.", errDetails)
 		return
 	}
 
 	// Get all users in the account
 	users, err := h.service.GetUsersByAccount(accountID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get users"})
+		errDetails := helpers.APIError{Code: "DB_FETCH_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to get users for the account.", errDetails)
 		return
 	}
 
 	if len(users) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No users found in account"})
+		errDetails := helpers.APIError{Code: "NO_USERS_IN_ACCOUNT", Details: "Cannot send report because there are no users associated with this account."}
+		helpers.Error(c.Writer, http.StatusBadRequest, "No users found in the account.", errDetails)
 		return
 	}
 
-	// Generate stock report data
+	// Generate the data for the stock report
 	stockData, err := h.generateStockReportData(accountID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate stock report"})
+		errDetails := helpers.APIError{Code: "REPORT_GENERATION_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to generate stock report data.", errDetails)
 		return
 	}
 
-	// Send weekly stock report
+	// Send the weekly stock report via the email service
 	if err := h.emailService.SendWeeklyStockReport(*account, users, stockData); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send weekly stock report"})
+		errDetails := helpers.APIError{Code: "EMAIL_SEND_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to send weekly stock report.", errDetails)
 		return
 	}
 
-	// Log successful email sending for each user
+	// Log the successful email dispatch for each user
 	for _, user := range users {
 		h.logEmailSuccess(accountID, &user.ID, user.Email, fmt.Sprintf("Weekly Stock Report - %s", account.Name), models.EmailTypeWeeklyReport)
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message":     "Weekly stock report sent successfully",
+	responseData := gin.H{
 		"account_id":  accountID,
 		"users_count": len(users),
-	})
+	}
+	helpers.Success(c.Writer, http.StatusOK, "Weekly stock report sent successfully.", responseData)
 }
 
-// SendLowStockAlert sends a low stock alert email
-// @Summary Send low stock alert
-// @Description Send a low stock alert email to all users in an account
-// @Tags email
-// @Accept json
-// @Produce json
-// @Param account_id path int true "Account ID"
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} map[string]interface{}
-// @Failure 500 {object} map[string]interface{}
-// @Router /email/low-stock-alert/{account_id} [post]
+// SendLowStockAlert godoc
+// @Summary      Send low stock alert
+// @Description  Checks for low stock items and sends an alert email to all users in the account if any are found.
+// @Tags         email
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        account_id  path      int                                         true  "Account ID to check and send the alert for"
+// @Success      200         {object}  helpers.APIResponse                           "Alert sent successfully, or no low stock items were found"
+// @Failure      400         {object}  helpers.APIResponse                           "Invalid account ID format or no users in account"
+// @Failure      404         {object}  helpers.APIResponse                           "Account not found"
+// @Failure      500         {object}  helpers.APIResponse                           "Internal server error"
+// @Router       /email/low-stock-alert/{account_id} [post]
 func (h *EmailHandler) SendLowStockAlert(c *gin.Context) {
 	accountID, err := strconv.Atoi(c.Param("account_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account ID"})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: "Account ID must be a valid integer."}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid Account ID.", errDetails)
 		return
 	}
 
-	// Get account
+	// Get the account from the database
 	account, err := h.service.GetAccount(accountID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Account not found"})
+		errDetails := helpers.APIError{Code: "ACCOUNT_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "Account not found.", errDetails)
 		return
 	}
 
 	// Get all users in the account
 	users, err := h.service.GetUsersByAccount(accountID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get users"})
+		errDetails := helpers.APIError{Code: "DB_FETCH_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to get users for the account.", errDetails)
 		return
 	}
 
 	if len(users) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No users found in account"})
+		errDetails := helpers.APIError{Code: "NO_USERS_IN_ACCOUNT", Details: "Cannot send alert because there are no users associated with this account."}
+		helpers.Error(c.Writer, http.StatusBadRequest, "No users found in the account.", errDetails)
 		return
 	}
 
 	// Get low stock items
 	lowStockItems, err := h.service.GetLowStockItems(accountID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get inventory items"})
+		errDetails := helpers.APIError{Code: "DB_FETCH_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to retrieve low stock items.", errDetails)
 		return
 	}
 
+	// If no items are low on stock, it's a successful outcome with no email needed.
 	if len(lowStockItems) == 0 {
-		c.JSON(http.StatusOK, gin.H{
-			"message":    "No low stock items found",
+		responseData := gin.H{
 			"account_id": accountID,
-		})
+		}
+		helpers.Success(c.Writer, http.StatusOK, "No low stock items found to report.", responseData)
 		return
 	}
 
-	// Send low stock alert
+	// Send the low stock alert via the email service
 	if err := h.emailService.SendLowStockAlert(*account, users, lowStockItems); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send low stock alert"})
+		errDetails := helpers.APIError{Code: "EMAIL_SEND_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to send low stock alert.", errDetails)
 		return
 	}
 
-	// Log successful email sending for each user
+	// Log the successful email dispatch for each user
 	for _, user := range users {
 		h.logEmailSuccess(accountID, &user.ID, user.Email, fmt.Sprintf("Low Stock Alert - %s", account.Name), models.EmailTypeLowStockAlert)
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message":               "Low stock alert sent successfully",
+	responseData := gin.H{
 		"account_id":            accountID,
 		"users_count":           len(users),
 		"low_stock_items_count": len(lowStockItems),
-	})
+	}
+	helpers.Success(c.Writer, http.StatusOK, "Low stock alert sent successfully.", responseData)
 }
 
-// SendWeeklySupplyChainReport sends a weekly supply chain report email
-// @Summary Send weekly supply chain report
-// @Description Send a weekly supply chain report email to all users in an account
-// @Tags email
-// @Accept json
-// @Produce json
-// @Param account_id path int true "Account ID"
-// @Success 200 {object} map[string]interface{}
-// @Failure 400 {object} map[string]interface{}
-// @Failure 500 {object} map[string]interface{}
-// @Router /email/weekly-supply-chain/{account_id} [post]
+// SendWeeklySupplyChainReport godoc
+// @Summary      Send weekly supply chain report
+// @Description  Triggers the sending of a weekly supply chain report email to all users in a specific account.
+// @Tags         email
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        account_id  path      int                                         true  "Account ID to send the report for"
+// @Success      200         {object}  helpers.APIResponse                           "Weekly supply chain report sent successfully"
+// @Failure      400         {object}  helpers.APIResponse                           "Invalid account ID format or no users in account"
+// @Failure      404         {object}  helpers.APIResponse                           "Account not found"
+// @Failure      500         {object}  helpers.APIResponse                           "Internal server error (e.g., failed to send email)"
+// @Router       /email/weekly-supply-chain/{account_id} [post]
 func (h *EmailHandler) SendWeeklySupplyChainReport(c *gin.Context) {
 	accountID, err := strconv.Atoi(c.Param("account_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account ID"})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: "Account ID must be a valid integer."}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid Account ID.", errDetails)
 		return
 	}
 
-	// Get account
+	// Get the account from the database
 	account, err := h.service.GetAccount(accountID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Account not found"})
+		errDetails := helpers.APIError{Code: "ACCOUNT_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "Account not found.", errDetails)
 		return
 	}
 
 	// Get all users in the account
 	users, err := h.service.GetUsersByAccount(accountID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get users"})
+		errDetails := helpers.APIError{Code: "DB_FETCH_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to get users for the account.", errDetails)
 		return
 	}
 
 	if len(users) == 0 {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "No users found in account"})
+		errDetails := helpers.APIError{Code: "NO_USERS_IN_ACCOUNT", Details: "Cannot send report because there are no users associated with this account."}
+		helpers.Error(c.Writer, http.StatusBadRequest, "No users found in the account.", errDetails)
 		return
 	}
 
-	// Generate supply chain report data
+	// Generate the data for the supply chain report
 	supplyChainData, err := h.generateSupplyChainReportData(accountID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate supply chain report"})
+		errDetails := helpers.APIError{Code: "REPORT_GENERATION_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to generate supply chain report data.", errDetails)
 		return
 	}
 
-	// Send weekly supply chain report
+	// Send the weekly supply chain report via the email service
 	if err := h.emailService.SendWeeklySupplyChainReport(*account, users, supplyChainData); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to send weekly supply chain report"})
+		errDetails := helpers.APIError{Code: "EMAIL_SEND_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to send weekly supply chain report.", errDetails)
 		return
 	}
 
-	// Log successful email sending for each user
+	// Log the successful email dispatch for each user
 	for _, user := range users {
 		h.logEmailSuccess(accountID, &user.ID, user.Email, fmt.Sprintf("Weekly Supply Chain Report - %s", account.Name), models.EmailTypeWeeklySupplyChain)
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message":     "Weekly supply chain report sent successfully",
+	responseData := gin.H{
 		"account_id":  accountID,
 		"users_count": len(users),
-	})
+	}
+	helpers.Success(c.Writer, http.StatusOK, "Weekly supply chain report sent successfully.", responseData)
 }
 
 // generateVerificationToken creates a new verification token for a user
@@ -562,52 +597,90 @@ type EmailScheduleRequest struct {
 	IsActive   bool   `json:"is_active"`                      // Whether the schedule is active
 }
 
-// GetEmailSchedules handles GET /api/accounts/:accountID/email-schedules
-// Returns all email schedules for an account
+// GetEmailSchedules handles GET /api/v1/accounts/:account_id/email-schedules
+// Returns all email schedules for a specific account.
+//
+// Authentication: Required (JWT token in Authorization header)
+// Authorization: User must be authenticated and have access to the specified account.
+//
+// URL Parameters:
+//   - account_id: The ID of the account to retrieve email schedules for (integer)
+//
+// Response:
+//
+//	All responses are wrapped in the standard APIResponse structure.
+//
+// Status Codes:
+//   - 200 OK: Email schedules retrieved successfully.
+//   - 400 Bad Request: Invalid account ID format.
+//   - 401 Unauthorized: User not authenticated.
+//   - 403 Forbidden: User does not have access to the requested account.
+//   - 500 Internal Server Error: Failed to retrieve email schedules.
 func GetEmailSchedules(c *gin.Context) {
 	// Get account ID from URL parameter
-	accountIDStr := c.Param("account_id")
-	accountID, err := strconv.Atoi(accountIDStr)
+	accountID, err := strconv.Atoi(c.Param("account_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account ID"})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: "Account ID must be a valid integer."}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid Account ID.", errDetails)
 		return
 	}
 
 	// Get user from context (set by auth middleware)
-	user, exists := c.Get("user")
+	userInterface, exists := c.Get("user")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
 		return
 	}
+	user := userInterface.(*models.User)
 
 	// Validate account access
 	service := c.MustGet("service").(*database.Service)
-	if err := service.ValidateAccountAccess(accountID, user.(*models.User).AccountID); err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+	if err := service.ValidateAccountAccess(accountID, user.AccountID); err != nil {
+		errDetails := helpers.APIError{Code: "FORBIDDEN", Details: "You do not have permission to access this account's schedules."}
+		helpers.Error(c.Writer, http.StatusForbidden, "Access denied.", errDetails)
 		return
 	}
 
 	// Get email schedules for the account
 	schedules, err := service.GetEmailSchedulesByAccount(accountID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get email schedules"})
+		errDetails := helpers.APIError{Code: "DB_FETCH_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to get email schedules.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"account_id": accountID,
-		"schedules":  schedules,
-	})
+	// Return a 200 OK response with the list of schedules
+	helpers.Success(c.Writer, http.StatusOK, "Email schedules retrieved successfully.", schedules)
 }
 
-// GetEmailSchedule handles GET /api/accounts/:accountID/email-schedules/:emailType
-// Returns a specific email schedule for an account
+// GetEmailSchedule handles GET /api/v1/accounts/:account_id/email-schedules/:emailType
+// Returns a specific email schedule for an account.
+//
+// Authentication: Required (JWT token in Authorization header)
+// Authorization: User must be authenticated and have access to the specified account.
+//
+// URL Parameters:
+//   - account_id: The ID of the account (integer)
+//   - emailType: The type of the email schedule (string)
+//
+// Response:
+//
+//	All responses are wrapped in the standard APIResponse structure.
+//
+// Status Codes:
+//   - 200 OK: Email schedule retrieved successfully.
+//   - 400 Bad Request: Invalid account ID format.
+//   - 401 Unauthorized: User not authenticated.
+//   - 403 Forbidden: User does not have access to the requested account.
+//   - 404 Not Found: The requested email schedule does not exist.
+//   - 500 Internal Server Error: General server error.
 func GetEmailSchedule(c *gin.Context) {
 	// Get account ID from URL parameter
-	accountIDStr := c.Param("account_id")
-	accountID, err := strconv.Atoi(accountIDStr)
+	accountID, err := strconv.Atoi(c.Param("account_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account ID"})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: "Account ID must be a valid integer."}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid Account ID.", errDetails)
 		return
 	}
 
@@ -615,75 +688,108 @@ func GetEmailSchedule(c *gin.Context) {
 	emailType := c.Param("emailType")
 
 	// Get user from context (set by auth middleware)
-	user, exists := c.Get("user")
+	userInterface, exists := c.Get("user")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
 		return
 	}
+	user := userInterface.(*models.User)
 
 	// Validate account access
 	service := c.MustGet("service").(*database.Service)
-	if err := service.ValidateAccountAccess(accountID, user.(*models.User).AccountID); err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+	if err := service.ValidateAccountAccess(accountID, user.AccountID); err != nil {
+		errDetails := helpers.APIError{Code: "FORBIDDEN", Details: "You do not have permission to access this account's schedules."}
+		helpers.Error(c.Writer, http.StatusForbidden, "Access denied.", errDetails)
 		return
 	}
 
-	// Get specific email schedule
+	// Get the specific email schedule
 	schedule, err := service.GetEmailScheduleByAccountAndType(accountID, emailType)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Email schedule not found"})
+		// This could be a genuine "not found" or another database error.
+		// Returning 404 is a safe default for a "get by ID" type of function.
+		errDetails := helpers.APIError{Code: "NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "Email schedule not found.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusOK, schedule)
+	// Return a 200 OK response with the schedule object
+	helpers.Success(c.Writer, http.StatusOK, "Email schedule retrieved successfully.", schedule)
 }
 
-// CreateEmailSchedule handles POST /api/accounts/:accountID/email-schedules
-// Creates a new email schedule for an account
+// CreateEmailSchedule handles POST /api/v1/accounts/:account_id/email-schedules
+// Creates a new email schedule for an account.
+//
+// Authentication: Required (JWT token in Authorization header)
+// Authorization: User must be authenticated and have access to the specified account.
+//
+// URL Parameters:
+//   - account_id: The ID of the account to create the schedule for (integer)
+//
+// Request Body: JSON object with new email schedule details.
+//
+// Response:
+//
+//	All responses are wrapped in the standard APIResponse structure.
+//
+// Status Codes:
+//   - 201 Created: Email schedule created successfully.
+//   - 400 Bad Request: Invalid account ID format or request body.
+//   - 401 Unauthorized: User not authenticated.
+//   - 403 Forbidden: User does not have access to the requested account.
+//   - 409 Conflict: A schedule with the same email type already exists for this account.
+//   - 500 Internal Server Error: Failed to create the email schedule.
 func CreateEmailSchedule(c *gin.Context) {
 	// Get account ID from URL parameter
-	accountIDStr := c.Param("account_id")
-	accountID, err := strconv.Atoi(accountIDStr)
+	accountID, err := strconv.Atoi(c.Param("account_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account ID"})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: "Account ID must be a valid integer."}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid Account ID.", errDetails)
 		return
 	}
 
 	// Get user from context (set by auth middleware)
-	user, exists := c.Get("user")
+	userInterface, exists := c.Get("user")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
 		return
 	}
+	user := userInterface.(*models.User)
 
 	// Validate account access
 	service := c.MustGet("service").(*database.Service)
-	if err := service.ValidateAccountAccess(accountID, user.(*models.User).AccountID); err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+	if err := service.ValidateAccountAccess(accountID, user.AccountID); err != nil {
+		errDetails := helpers.APIError{Code: "FORBIDDEN", Details: "You do not have permission to modify this account's schedules."}
+		helpers.Error(c.Writer, http.StatusForbidden, "Access denied.", errDetails)
 		return
 	}
 
 	// Parse request body
 	var req EmailScheduleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid request body.", errDetails)
 		return
 	}
 
 	// Validate email type
 	if !isValidEmailType(req.EmailType) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid email type"})
+		errDetails := helpers.APIError{Code: "INVALID_EMAIL_TYPE", Details: fmt.Sprintf("'%s' is not a valid email type.", req.EmailType)}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid email type provided.", errDetails)
 		return
 	}
 
-	// Check if schedule already exists
+	// Check if a schedule of this type already exists for the account
 	existingSchedule, err := service.GetEmailScheduleByAccountAndType(accountID, req.EmailType)
 	if err == nil && existingSchedule != nil {
-		c.JSON(http.StatusConflict, gin.H{"error": "Email schedule already exists for this type"})
+		errDetails := helpers.APIError{Code: "CONFLICT", Details: "An email schedule for this type already exists."}
+		helpers.Error(c.Writer, http.StatusConflict, "Email schedule already exists.", errDetails)
 		return
 	}
 
-	// Create new email schedule
+	// Create a new email schedule model
 	schedule := &models.EmailSchedule{
 		AccountID:  accountID,
 		EmailType:  req.EmailType,
@@ -694,22 +800,46 @@ func CreateEmailSchedule(c *gin.Context) {
 		IsActive:   req.IsActive,
 	}
 
+	// Save the new schedule to the database
 	if err := service.CreateEmailSchedule(schedule); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create email schedule"})
+		errDetails := helpers.APIError{Code: "DB_INSERT_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to create email schedule.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusCreated, schedule)
+	// Return a 201 Created response with the new schedule object
+	helpers.Success(c.Writer, http.StatusCreated, "Email schedule created successfully.", schedule)
 }
 
-// UpdateEmailSchedule handles PUT /api/accounts/:accountID/email-schedules/:emailType
-// Updates an existing email schedule for an account
+// UpdateEmailSchedule handles PUT /api/v1/accounts/:account_id/email-schedules/:emailType
+// Updates an existing email schedule for an account.
+//
+// Authentication: Required (JWT token in Authorization header)
+// Authorization: User must be authenticated and have access to the specified account.
+//
+// URL Parameters:
+//   - account_id: The ID of the account (integer)
+//   - emailType: The type of the email schedule to update (string)
+//
+// Request Body: JSON object with updated email schedule details.
+//
+// Response:
+//
+//	All responses are wrapped in the standard APIResponse structure.
+//
+// Status Codes:
+//   - 200 OK: Email schedule updated successfully.
+//   - 400 Bad Request: Invalid account ID format or request body.
+//   - 401 Unauthorized: User not authenticated.
+//   - 403 Forbidden: User does not have access to the requested account.
+//   - 404 Not Found: The requested email schedule does not exist.
+//   - 500 Internal Server Error: Failed to update the email schedule.
 func UpdateEmailSchedule(c *gin.Context) {
 	// Get account ID from URL parameter
-	accountIDStr := c.Param("account_id")
-	accountID, err := strconv.Atoi(accountIDStr)
+	accountID, err := strconv.Atoi(c.Param("account_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account ID"})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: "Account ID must be a valid integer."}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid Account ID.", errDetails)
 		return
 	}
 
@@ -717,40 +847,46 @@ func UpdateEmailSchedule(c *gin.Context) {
 	emailType := c.Param("emailType")
 
 	// Get user from context (set by auth middleware)
-	user, exists := c.Get("user")
+	userInterface, exists := c.Get("user")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
 		return
 	}
+	user := userInterface.(*models.User)
 
 	// Validate account access
 	service := c.MustGet("service").(*database.Service)
-	if err := service.ValidateAccountAccess(accountID, user.(*models.User).AccountID); err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+	if err := service.ValidateAccountAccess(accountID, user.AccountID); err != nil {
+		errDetails := helpers.APIError{Code: "FORBIDDEN", Details: "You do not have permission to modify this account's schedules."}
+		helpers.Error(c.Writer, http.StatusForbidden, "Access denied.", errDetails)
 		return
 	}
 
-	// Get existing schedule
+	// Get the existing schedule
 	schedule, err := service.GetEmailScheduleByAccountAndType(accountID, emailType)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Email schedule not found"})
+		errDetails := helpers.APIError{Code: "NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "Email schedule not found.", errDetails)
 		return
 	}
 
 	// Parse request body
 	var req EmailScheduleRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body"})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid request body.", errDetails)
 		return
 	}
 
 	// Validate email type
 	if !isValidEmailType(req.EmailType) {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid email type"})
+		errDetails := helpers.APIError{Code: "INVALID_EMAIL_TYPE", Details: fmt.Sprintf("'%s' is not a valid email type.", req.EmailType)}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid email type provided.", errDetails)
 		return
 	}
 
-	// Update schedule fields
+	// Update the schedule fields from the request
 	schedule.EmailType = req.EmailType
 	schedule.Frequency = req.Frequency
 	schedule.DayOfWeek = req.DayOfWeek
@@ -758,22 +894,44 @@ func UpdateEmailSchedule(c *gin.Context) {
 	schedule.TimeOfDay = req.TimeOfDay
 	schedule.IsActive = req.IsActive
 
+	// Save the updated schedule to the database
 	if err := service.UpdateEmailSchedule(schedule); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update email schedule"})
+		errDetails := helpers.APIError{Code: "DB_UPDATE_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to update email schedule.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusOK, schedule)
+	// Return a 200 OK response with the updated schedule object
+	helpers.Success(c.Writer, http.StatusOK, "Email schedule updated successfully.", schedule)
 }
 
-// DeleteEmailSchedule handles DELETE /api/accounts/:accountID/email-schedules/:emailType
-// Deletes an email schedule for an account (effectively turns it off)
+// DeleteEmailSchedule handles DELETE /api/v1/accounts/:account_id/email-schedules/:emailType
+// Deletes an email schedule for an account.
+//
+// Authentication: Required (JWT token in Authorization header)
+// Authorization: User must be authenticated and have access to the specified account.
+//
+// URL Parameters:
+//   - account_id: The ID of the account (integer)
+//   - emailType: The type of the email schedule to delete (string)
+//
+// Response:
+//
+//	All responses are wrapped in the standard APIResponse structure.
+//
+// Status Codes:
+//   - 200 OK: Email schedule deleted successfully.
+//   - 400 Bad Request: Invalid account ID format.
+//   - 401 Unauthorized: User not authenticated.
+//   - 403 Forbidden: User does not have access to the requested account.
+//   - 404 Not Found: The requested email schedule does not exist.
+//   - 500 Internal Server Error: Failed to delete the email schedule.
 func DeleteEmailSchedule(c *gin.Context) {
 	// Get account ID from URL parameter
-	accountIDStr := c.Param("account_id")
-	accountID, err := strconv.Atoi(accountIDStr)
+	accountID, err := strconv.Atoi(c.Param("account_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account ID"})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: "Account ID must be a valid integer."}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid Account ID.", errDetails)
 		return
 	}
 
@@ -781,43 +939,68 @@ func DeleteEmailSchedule(c *gin.Context) {
 	emailType := c.Param("emailType")
 
 	// Get user from context (set by auth middleware)
-	user, exists := c.Get("user")
+	userInterface, exists := c.Get("user")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
 		return
 	}
+	user := userInterface.(*models.User)
 
 	// Validate account access
 	service := c.MustGet("service").(*database.Service)
-	if err := service.ValidateAccountAccess(accountID, user.(*models.User).AccountID); err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+	if err := service.ValidateAccountAccess(accountID, user.AccountID); err != nil {
+		errDetails := helpers.APIError{Code: "FORBIDDEN", Details: "You do not have permission to modify this account's schedules."}
+		helpers.Error(c.Writer, http.StatusForbidden, "Access denied.", errDetails)
 		return
 	}
 
-	// Get existing schedule
+	// Get the existing schedule to ensure it exists before deleting
 	schedule, err := service.GetEmailScheduleByAccountAndType(accountID, emailType)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Email schedule not found"})
+		errDetails := helpers.APIError{Code: "NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "Email schedule not found.", errDetails)
 		return
 	}
 
-	// Delete the schedule
+	// Delete the schedule from the database
 	if err := service.DeleteEmailSchedule(schedule.ID); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to delete email schedule"})
+		errDetails := helpers.APIError{Code: "DB_DELETE_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to delete email schedule.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"message": "Email schedule deleted successfully"})
+	// Return a 200 OK response with a success message
+	helpers.Success(c.Writer, http.StatusOK, "Email schedule deleted successfully.", nil)
 }
 
-// ToggleEmailSchedule handles PATCH /api/accounts/:accountID/email-schedules/:emailType/toggle
-// Toggles the active status of an email schedule (turn on/off)
+// ToggleEmailSchedule handles PATCH /api/v1/accounts/:account_id/email-schedules/:emailType/toggle
+// Toggles the IsActive status of an email schedule.
+//
+// Authentication: Required (JWT token in Authorization header)
+// Authorization: User must be authenticated and have access to the specified account.
+//
+// URL Parameters:
+//   - account_id: The ID of the account (integer)
+//   - emailType: The type of the email schedule to toggle (string)
+//
+// Response:
+//
+//	All responses are wrapped in the standard APIResponse structure.
+//
+// Status Codes:
+//   - 200 OK: Email schedule toggled successfully.
+//   - 400 Bad Request: Invalid account ID format.
+//   - 401 Unauthorized: User not authenticated.
+//   - 403 Forbidden: User does not have access to the requested account.
+//   - 404 Not Found: The requested email schedule does not exist.
+//   - 500 Internal Server Error: Failed to update the email schedule.
 func ToggleEmailSchedule(c *gin.Context) {
 	// Get account ID from URL parameter
-	accountIDStr := c.Param("account_id")
-	accountID, err := strconv.Atoi(accountIDStr)
+	accountID, err := strconv.Atoi(c.Param("account_id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid account ID"})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: "Account ID must be a valid integer."}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid Account ID.", errDetails)
 		return
 	}
 
@@ -825,45 +1008,52 @@ func ToggleEmailSchedule(c *gin.Context) {
 	emailType := c.Param("emailType")
 
 	// Get user from context (set by auth middleware)
-	user, exists := c.Get("user")
+	userInterface, exists := c.Get("user")
 	if !exists {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
 		return
 	}
+	user := userInterface.(*models.User)
 
 	// Validate account access
 	service := c.MustGet("service").(*database.Service)
-	if err := service.ValidateAccountAccess(accountID, user.(*models.User).AccountID); err != nil {
-		c.JSON(http.StatusForbidden, gin.H{"error": "Access denied"})
+	if err := service.ValidateAccountAccess(accountID, user.AccountID); err != nil {
+		errDetails := helpers.APIError{Code: "FORBIDDEN", Details: "You do not have permission to modify this account's schedules."}
+		helpers.Error(c.Writer, http.StatusForbidden, "Access denied.", errDetails)
 		return
 	}
 
-	// Get existing schedule
+	// Get the existing schedule
 	schedule, err := service.GetEmailScheduleByAccountAndType(accountID, emailType)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "Email schedule not found"})
+		errDetails := helpers.APIError{Code: "NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "Email schedule not found.", errDetails)
 		return
 	}
 
-	// Toggle the active status
+	// Toggle the IsActive status
 	schedule.IsActive = !schedule.IsActive
 
+	// Save the updated schedule to the database
 	if err := service.UpdateEmailSchedule(schedule); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update email schedule"})
+		errDetails := helpers.APIError{Code: "DB_UPDATE_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to update email schedule.", errDetails)
 		return
 	}
 
+	// Determine status message for the response
 	status := "enabled"
 	if !schedule.IsActive {
 		status = "disabled"
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"message":    "Email schedule " + status + " successfully",
+	responseData := gin.H{
 		"is_active":  schedule.IsActive,
 		"email_type": emailType,
 		"account_id": accountID,
-	})
+	}
+	helpers.Success(c.Writer, http.StatusOK, "Email schedule "+status+" successfully.", responseData)
 }
 
 // isValidEmailType validates that the email type is supported

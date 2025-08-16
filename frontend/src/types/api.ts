@@ -59,6 +59,7 @@ export interface Category {
 }
 
 export interface InventoryItem {
+  data: InventoryItem | PromiseLike<InventoryItem>;
   id: number;
   account_id: number;
   name: string;

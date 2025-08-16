@@ -448,72 +448,100 @@ func (h *InventoryHandler) DeleteInventoryItem(c *gin.Context) {
 // Menu Item Handlers
 
 // GetMenuItems godoc
-// @Summary Get all menu items
-// @Description Retrieve all menu items for the authenticated user's account
-// @Tags menu
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Success 200 {object} map[string]interface{} "List of menu items"
-// @Failure 401 {object} map[string]interface{} "User not authenticated"
-// @Failure 404 {object} map[string]interface{} "User not found"
-// @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/menu/items [get]
+// @Summary      Get all menu items
+// @Description  Retrieve all menu items for the authenticated user's account.
+// @Tags         menu
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  helpers.APIResponse{data=[]models.MenuItem}  "Successfully retrieved list of menu items"
+// @Failure      401  {object}  helpers.APIResponse                          "Error: User not authenticated"
+// @Failure      404  {object}  helpers.APIResponse                          "Error: User not found"
+// @Failure      500  {object}  helpers.APIResponse                          "Error: Internal server error"
+// @Router       /api/v1/menu/items [get]
 func (h *InventoryHandler) GetMenuItems(c *gin.Context) {
-	userID, _ := c.Get("userID")
-	user, err := h.service.GetUser(userID.(int))
+	// Extract user ID from context (set by AuthMiddleware)
+	userIDInterface, exists := c.Get("userID")
+	if !exists {
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User ID not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
+		return
+	}
+	userID := userIDInterface.(int)
+
+	// Retrieve user details from the database
+	user, err := h.service.GetUser(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		errDetails := helpers.APIError{Code: "USER_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "User not found.", errDetails)
 		return
 	}
 
+	// Get all menu items for the user's account
 	items, err := h.service.GetMenuItemsByAccount(user.AccountID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch menu items"})
+		errDetails := helpers.APIError{Code: "DB_FETCH_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to fetch menu items.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"items": items})
+	// Return a 200 OK response with the list of menu items in the data field.
+	helpers.Success(c.Writer, http.StatusOK, "Menu items retrieved successfully.", items)
 }
 
 // CreateMenuItem godoc
-// @Summary Create a new menu item
-// @Description Create a new menu item for the authenticated user's account
-// @Tags menu
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param item body models.MenuItem true "Menu item details"
-// @Success 201 {object} map[string]interface{} "Menu item created"
-// @Failure 400 {object} map[string]interface{} "Invalid request body"
-// @Failure 401 {object} map[string]interface{} "User not authenticated"
-// @Failure 404 {object} map[string]interface{} "User not found"
-// @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/menu/items [post]
+// @Summary      Create a new menu item
+// @Description  Create a new menu item for the authenticated user's account.
+// @Tags         menu
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        item  body      models.MenuItem               true  "Menu item details"
+// @Success      201   {object}  helpers.APIResponse{data=models.MenuItem}  "Menu item created successfully"
+// @Failure      400   {object}  helpers.APIResponse                          "Invalid request body"
+// @Failure      401   {object}  helpers.APIResponse                          "User not authenticated"
+// @Failure      404   {object}  helpers.APIResponse                          "User not found"
+// @Failure      500   {object}  helpers.APIResponse                          "Internal server error"
+// @Router       /api/v1/menu/items [post]
 func (h *InventoryHandler) CreateMenuItem(c *gin.Context) {
-	userID, _ := c.Get("userID")
-	user, err := h.service.GetUser(userID.(int))
+	// Extract user ID from context (set by AuthMiddleware)
+	userIDInterface, exists := c.Get("userID")
+	if !exists {
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User ID not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
+		return
+	}
+	userID := userIDInterface.(int)
+
+	// Retrieve user details from the database
+	user, err := h.service.GetUser(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		errDetails := helpers.APIError{Code: "USER_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "User not found.", errDetails)
 		return
 	}
 
+	// Parse and validate the JSON request body
 	var item models.MenuItem
 	if err := c.ShouldBindJSON(&item); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid request body.", errDetails)
 		return
 	}
 
-	// Set account ID from authenticated user
+	// Set account ID from the authenticated user to ensure proper scoping
 	item.AccountID = user.AccountID
 
+	// Create the menu item in the database
 	err = h.service.CreateMenuItem(&item)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create menu item: " + err.Error()})
+		errDetails := helpers.APIError{Code: "DB_INSERT_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to create menu item.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"item": item})
+	// Return a 201 Created response with the new menu item object.
+	helpers.Success(c.Writer, http.StatusCreated, "Menu item created successfully.", item)
 }
 
 // Delivery Handlers
@@ -620,72 +648,100 @@ func (h *InventoryHandler) GetDeliveries(c *gin.Context) {
 // Snapshot Handlers
 
 // CreateInventorySnapshot godoc
-// @Summary Create inventory snapshot
-// @Description Create a point-in-time inventory count snapshot
-// @Tags snapshots
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Param snapshot body models.InventorySnapshot true "Snapshot details"
-// @Success 201 {object} map[string]interface{} "Snapshot created"
-// @Failure 400 {object} map[string]interface{} "Invalid request body"
-// @Failure 401 {object} map[string]interface{} "User not authenticated"
-// @Failure 404 {object} map[string]interface{} "User not found"
-// @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/snapshots [post]
+// @Summary      Create inventory snapshot
+// @Description  Create a point-in-time inventory count snapshot for all items.
+// @Tags         snapshots
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Param        snapshot  body      models.InventorySnapshot                  true  "Snapshot details including a map of item IDs to quantities"
+// @Success      201       {object}  helpers.APIResponse{data=models.InventorySnapshot}  "Snapshot created successfully"
+// @Failure      400       {object}  helpers.APIResponse                               "Invalid request body"
+// @Failure      401       {object}  helpers.APIResponse                               "User not authenticated"
+// @Failure      404       {object}  helpers.APIResponse                               "User not found"
+// @Failure      500       {object}  helpers.APIResponse                               "Internal server error"
+// @Router       /api/v1/snapshots [post]
 func (h *InventoryHandler) CreateInventorySnapshot(c *gin.Context) {
-	userID, _ := c.Get("userID")
-	user, err := h.service.GetUser(userID.(int))
+	// Extract user ID from context (set by AuthMiddleware)
+	userIDInterface, exists := c.Get("userID")
+	if !exists {
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User ID not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
+		return
+	}
+	userID := userIDInterface.(int)
+
+	// Retrieve user details from the database
+	user, err := h.service.GetUser(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		errDetails := helpers.APIError{Code: "USER_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "User not found.", errDetails)
 		return
 	}
 
+	// Parse and validate the JSON request body
 	var snapshot models.InventorySnapshot
 	if err := c.ShouldBindJSON(&snapshot); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request body: " + err.Error()})
+		errDetails := helpers.APIError{Code: "INVALID_INPUT", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusBadRequest, "Invalid request body.", errDetails)
 		return
 	}
 
-	// Set account ID from authenticated user
+	// Set account ID from the authenticated user to ensure proper scoping
 	snapshot.AccountID = user.AccountID
 
+	// Create the inventory snapshot in the database
 	err = h.service.CreateInventorySnapshot(&snapshot)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create inventory snapshot: " + err.Error()})
+		errDetails := helpers.APIError{Code: "DB_INSERT_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to create inventory snapshot.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"snapshot": snapshot})
+	// Return a 201 Created response with the new snapshot object.
+	helpers.Success(c.Writer, http.StatusCreated, "Inventory snapshot created successfully.", snapshot)
 }
 
 // GetInventorySnapshots godoc
-// @Summary Get all inventory snapshots
-// @Description Retrieve all inventory snapshots for the authenticated user's account
-// @Tags snapshots
-// @Accept json
-// @Produce json
-// @Security BearerAuth
-// @Success 200 {object} map[string]interface{} "List of snapshots"
-// @Failure 401 {object} map[string]interface{} "User not authenticated"
-// @Failure 404 {object} map[string]interface{} "User not found"
-// @Failure 500 {object} map[string]interface{} "Internal server error"
-// @Router /api/v1/snapshots [get]
+// @Summary      Get all inventory snapshots
+// @Description  Retrieve all historical inventory snapshots for the authenticated user's account.
+// @Tags         snapshots
+// @Accept       json
+// @Produce      json
+// @Security     BearerAuth
+// @Success      200  {object}  helpers.APIResponse{data=[]models.InventorySnapshot}  "Successfully retrieved list of snapshots"
+// @Failure      401  {object}  helpers.APIResponse                                  "Error: User not authenticated"
+// @Failure      404  {object}  helpers.APIResponse                                  "Error: User not found"
+// @Failure      500  {object}  helpers.APIResponse                                  "Error: Internal server error"
+// @Router       /api/v1/snapshots [get]
 func (h *InventoryHandler) GetInventorySnapshots(c *gin.Context) {
-	userID, _ := c.Get("userID")
-	user, err := h.service.GetUser(userID.(int))
+	// Extract user ID from context (set by AuthMiddleware)
+	userIDInterface, exists := c.Get("userID")
+	if !exists {
+		errDetails := helpers.APIError{Code: "UNAUTHORIZED", Details: "User ID not found in request context."}
+		helpers.Error(c.Writer, http.StatusUnauthorized, "User not authenticated.", errDetails)
+		return
+	}
+	userID := userIDInterface.(int)
+
+	// Retrieve user details from the database
+	user, err := h.service.GetUser(userID)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		errDetails := helpers.APIError{Code: "USER_NOT_FOUND", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusNotFound, "User not found.", errDetails)
 		return
 	}
 
+	// Get all inventory snapshots for the user's account
 	snapshots, err := h.service.GetInventorySnapshotsByAccount(user.AccountID)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch inventory snapshots"})
+		errDetails := helpers.APIError{Code: "DB_FETCH_FAILED", Details: err.Error()}
+		helpers.Error(c.Writer, http.StatusInternalServerError, "Failed to fetch inventory snapshots.", errDetails)
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"snapshots": snapshots})
+	// Return a 200 OK response with the list of snapshots in the data field.
+	helpers.Success(c.Writer, http.StatusOK, "Inventory snapshots retrieved successfully.", snapshots)
 }
 
 // Vendor-based handlers
