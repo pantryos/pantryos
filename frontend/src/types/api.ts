@@ -58,6 +58,17 @@ export interface Category {
   updated_at: string;
 }
 
+export interface CreateCategoryRequest {
+  name: string;
+  description: string;
+  color: string;
+  is_active: boolean;
+}
+
+export interface UpdateCategoryRequest extends CreateCategoryRequest {
+
+}
+
 export interface InventoryItem {
   data: InventoryItem | PromiseLike<InventoryItem>;
   id: number;
@@ -80,6 +91,7 @@ export interface MenuItem {
   name: string;
   price: number;
   category: string;
+  category_id: number;
 }
 
 export interface Delivery {
@@ -193,6 +205,7 @@ export interface CreateMenuItemRequest {
   name: string;
   price: number;
   category: string;
+  category_id: number,
 }
 
 export interface CreateDeliveryRequest {

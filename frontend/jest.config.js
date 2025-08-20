@@ -5,6 +5,7 @@ module.exports = {
   moduleNameMapper: {
     '^react-router-dom$': '<rootDir>/src/__mocks__/react-router-dom.ts',
     '^axios$': '<rootDir>/src/__mocks__/axios.ts',
+    '^@mui/x-data-grid$': '<rootDir>/src/__mocks__/muiDataGrid.ts',
   },
   transform: {
     '^.+\\.(ts|tsx)$': 'ts-jest',
