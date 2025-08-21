@@ -250,7 +250,7 @@ const Menu: React.FC = () => {
               label="Price"
               type="number"
               value={formData.price}
-              onChange={(e) => handleInputChange('price', e.target.value)} // Pass the raw string value
+              onChange={(e) => handleInputChange('price', parseFloat(e.target.value) || 0)} // Pass the raw string value
               margin="normal"
               required
               InputProps={{

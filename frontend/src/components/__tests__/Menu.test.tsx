@@ -91,7 +91,7 @@ describe('Menu Component', () => {
             expect(mockApiService.createMenuItem).toHaveBeenCalledTimes(1);
             expect(mockApiService.createMenuItem).toHaveBeenCalledWith({
                 name: 'New Latte',
-                price: '4.25',
+                price: 4.25,
                 category: 'Hot Drinks',
                 category_id: 1,
             });
