@@ -125,7 +125,13 @@ const Menu: React.FC = () => {
       setDialogOpen(false);
       loadData();
     } catch (err: any) {
-      const errorMessage = err.response?.data?.error || 'Failed to save menu item';
+      const apiError = err.response?.data?.error;
+      let errorMessage = 'Failed to save menu item';
+      if (typeof apiError === 'string') {
+        errorMessage = apiError;
+      } else if (apiError && typeof apiError.details === 'string') {
+        errorMessage = apiError.details;
+      }
       setSnackbar({ open: true, message: errorMessage, severity: 'error' });
     }
   };
