@@ -14,7 +14,9 @@ import {
   CreateDeliveryRequest,
   ApiResponse,
   StandardAPIResponse,
-  Category
+  Category,
+  CreateCategoryRequest,
+  UpdateCategoryRequest
 } from '../types/api';
 
 // API service class for communicating with the Go backend
@@ -26,7 +28,7 @@ class ApiService {
   constructor() {
     // Use environment variable or default to localhost
     this.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
-    
+
     this.api = axios.create({
       baseURL: this.baseURL,
       headers: {
@@ -84,7 +86,26 @@ class ApiService {
     const response: AxiosResponse<StandardAPIResponse<Category[]>> = await this.api.get('/api/v1/categories/active');
     return response.data.data || [];
   }
- 
+
+    async getCategories(): Promise<Category[]> {
+    const response: AxiosResponse<StandardAPIResponse<Category[]>> = await this.api.get('/api/v1/categories');
+    return response.data.data || [];
+  }
+
+  async createCategory(categoryData: CreateCategoryRequest): Promise<Category> {
+    const response: AxiosResponse<StandardAPIResponse<Category>> = await this.api.post('/api/v1/categories', categoryData);
+    return response.data.data;
+  }
+
+  async updateCategory(id: number, categoryData: UpdateCategoryRequest): Promise<Category> {
+    const response: AxiosResponse<StandardAPIResponse<Category>> = await this.api.put(`/api/v1/categories/${id}`, categoryData);
+    return response.data.data;
+  }
+
+  async deleteCategory(id: number): Promise<void> {
+    await this.api.delete(`/api/v1/categories/${id}`);
+  }
+
   async getInventoryItems(): Promise<InventoryItem[]> {
     try {
       const response: AxiosResponse<StandardAPIResponse<InventoryItem[]>> = await this.api.get('/api/v1/inventory/items');
@@ -126,8 +147,8 @@ class ApiService {
 
   // Menu methods
   async getMenuItems(): Promise<MenuItem[]> {
-    const response: AxiosResponse<MenuItem[]> = await this.api.get('/api/v1/menu/items');
-    return response.data;
+    const response: AxiosResponse<StandardAPIResponse<MenuItem[]>> = await this.api.get('/api/v1/menu/items');
+    return response.data.data || [];
   }
 
   async createMenuItem(item: CreateMenuItemRequest): Promise<MenuItem> {
@@ -136,9 +157,17 @@ class ApiService {
   }
 
   // Delivery methods
-  async getDeliveries(): Promise<Delivery[]> {
-    const response: AxiosResponse<Delivery[]> = await this.api.get('/api/v1/deliveries');
-    return response.data;
+  async getDeliveries(vendor?: string): Promise<Delivery[]> {
+    // Start with the base URL
+    let url = '/api/v1/deliveries';
+
+    // If a vendor search term is provided, add it as a query parameter
+    if (vendor && vendor.trim() !== '') {
+      url += `?vendor=${encodeURIComponent(vendor)}`;
+    }
+
+    const response: AxiosResponse<StandardAPIResponse<Delivery[]>> = await this.api.get(url);
+    return response.data.data || [];
   }
 
   async logDelivery(delivery: CreateDeliveryRequest): Promise<Delivery> {
