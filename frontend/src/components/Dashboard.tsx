@@ -290,7 +290,7 @@ const Dashboard: React.FC = () => {
               fullWidth
               variant="outlined"
               startIcon={<MenuIcon />}
-              onClick={() => navigateTo("/menu/new")}
+              onClick={() => navigateTo("/menu")}
               sx={{ height: 56 }}
             >
               Add Menu Item
@@ -299,7 +299,7 @@ const Dashboard: React.FC = () => {
               fullWidth
               variant="outlined"
               startIcon={<DeliveryIcon />}
-              onClick={() => navigateTo("/deliveries/new")}
+              onClick={() => navigateTo("/deliveries")}
               sx={{ height: 56 }}
             >
               Log Delivery
