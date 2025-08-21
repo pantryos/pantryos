@@ -2,6 +2,9 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { AuthProvider, useAuth } from '../AuthContext';
 
+// Import the mocked service
+import apiService from '../../services/api';
+
 // Mock the API service as a default export
 jest.mock('../../services/api', () => ({
   __esModule: true,
@@ -15,9 +18,6 @@ jest.mock('../../services/api', () => ({
     isAuthenticated: jest.fn(),
   },
 }));
-
-// Import the mocked service
-import apiService from '../../services/api';
 const mockedApiService = apiService as jest.Mocked<typeof apiService>;
 
 // Test component to access auth context

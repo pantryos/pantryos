@@ -118,8 +118,8 @@ describe('CategoriesPage Component', () => {
     // Assert: Check the filtered results
     await waitFor(() => {
         expect(screen.getByText('Supplies')).toBeInTheDocument();
-        expect(screen.queryByText('Drinks')).not.toBeInTheDocument();
     });
+    expect(screen.queryByText('Drinks')).not.toBeInTheDocument();
   });
 
   test('allows a user to add a new category via the modal', async () => {

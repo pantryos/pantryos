@@ -89,13 +89,14 @@ describe('Menu Component', () => {
         // Assert: Verify the API was called with the correct data from the form
         await waitFor(() => {
             expect(mockApiService.createMenuItem).toHaveBeenCalledTimes(1);
-            expect(mockApiService.createMenuItem).toHaveBeenCalledWith({
+        });
+
+                    expect(mockApiService.createMenuItem).toHaveBeenCalledWith({
                 name: 'New Latte',
                 price: 4.25,
                 category: 'Hot Drinks',
                 category_id: 1,
             });
-        });
     });
 
 
