@@ -105,24 +105,25 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             echo "${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}" | docker login ${{ env.DIGITALOCEAN_REGISTRY }} --username ${{ secrets.DIGITALOCEAN_USERNAME }} --password-stdin
-
+            
             # Pull latest backend image
             docker pull ${{ env.DIGITALOCEAN_REGISTRY }}/${{ env.DOCKER_IMAGE_NAME_BE }}:latest
-
-            # Stop old container
+            
+            # Stop old container if exists
             docker rm -f pantryos-backend || true
-
-            # Write .env file on droplet
-            cat << 'EOF_ENV' > /home/${{ secrets.DROPLET_USERNAME }}/.env
-            ${{ steps.env_content.outputs.ENV_FILE_CONTENT }}
-            EOF_ENV
-
-            # Run backend
+            
+            # Run backend with env vars inline
             docker run -d \
               --name pantryos-backend \
               --restart unless-stopped \
-              --env-file /home/${{ secrets.DROPLET_USERNAME }}/.env \
+              -e USE_RAMSQL=${{ secrets.USE_RAMSQL }} \
+              -e DB_HOST=${{ secrets.DB_HOST }} \
+              -e DB_PORT=${{ secrets.DB_PORT }} \
+              -e DB_USER=${{ secrets.DB_USER }} \
+              -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
+              -e DB_NAME=${{ secrets.DB_NAME }} \
+              -e DB_SSLMODE=${{ secrets.DB_SSLMODE }} \
               -p 127.0.0.1:8085:8085 \
               ${{ env.DIGITALOCEAN_REGISTRY }}/${{ env.DOCKER_IMAGE_NAME_BE }}:latest
-
-            echo "Backend deployment complete!"
+            
+            echo "✅ Backend deployment complete!"
