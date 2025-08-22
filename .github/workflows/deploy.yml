@@ -123,7 +123,7 @@ jobs:
               -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
               -e DB_NAME=${{ secrets.DB_NAME }} \
               -e DB_SSLMODE=${{ secrets.DB_SSLMODE }} \
-              -p 127.0.0.1:8085:8085 \
+              -p 127.0.0.1:8086:8086 \
               ${{ env.DIGITALOCEAN_REGISTRY }}/${{ env.DOCKER_IMAGE_NAME_BE }}:latest
             
             echo "✅ Backend deployment complete!"
