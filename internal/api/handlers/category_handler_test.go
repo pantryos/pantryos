@@ -222,6 +222,9 @@ func TestCategoryHandler_CreateInventoryItemWithCategory(t *testing.T) {
 		PreferredVendor: "Coffee Supply Co.",
 		MinStockLevel:   10.0,
 		MaxStockLevel:   50.0,
+		MinWeeksStock:   2.0,
+		MaxWeeksStock:   8.0,
+		WastageRate:     0.0, // Default to 0% wastage for tests
 		CategoryID:      &category.ID,
 	}
 

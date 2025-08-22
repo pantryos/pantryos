@@ -4,8 +4,9 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
-	"gorm.io/gorm"
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // CountsMap represents a map of inventory item IDs to quantities
@@ -118,6 +119,7 @@ type InventoryItem struct {
 	MinWeeksStock   float64 `json:"min_weeks_stock" gorm:"default:2"`   // Minimum weeks of stock to maintain
 	MaxWeeksStock   float64 `json:"max_weeks_stock" gorm:"default:8"`   // Maximum weeks of stock to maintain
 	CategoryID      *int    `json:"category_id" gorm:"index"`           // Optional category assignment
+	WastageRate     float64 `json:"wastage_rate" gorm:"default:0"`      // Wastage rate as a percentage
 	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
 }
 

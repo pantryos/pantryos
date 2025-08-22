@@ -153,8 +153,8 @@ func TestGetInventoryItems(t *testing.T) {
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Contains(t, response, "items")
-		items := response["items"].([]interface{})
+		assert.Contains(t, response, "data")
+		items := response["data"].([]interface{})
 		assert.Empty(t, items)
 	})
 
@@ -168,6 +168,9 @@ func TestGetInventoryItems(t *testing.T) {
 			PreferredVendor: "Coffee Supply Co.",
 			MinStockLevel:   5.0,
 			MaxStockLevel:   50.0,
+			MinWeeksStock:   2.0,
+			MaxWeeksStock:   8.0,
+			WastageRate:     0.0, // Default to 0% wastage for tests
 		}
 		err := service.CreateInventoryItem(item)
 		require.NoError(t, err)
@@ -182,8 +185,8 @@ func TestGetInventoryItems(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Contains(t, response, "items")
-		items := response["items"].([]interface{})
+		assert.Contains(t, response, "data")
+		items := response["data"].([]interface{})
 		assert.Len(t, items, 1)
 	})
 }
@@ -212,8 +215,8 @@ func TestCreateInventoryItem(t *testing.T) {
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Contains(t, response, "item")
-		item := response["item"].(map[string]interface{})
+		assert.Contains(t, response, "data")
+		item := response["data"].(map[string]interface{})
 		assert.Equal(t, "Milk", item["name"])
 		assert.Equal(t, "liters", item["unit"])
 		assert.Equal(t, float64(2.50), item["cost_per_unit"])
@@ -235,8 +238,8 @@ func TestCreateInventoryItem(t *testing.T) {
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Contains(t, response, "item")
-		item := response["item"].(map[string]interface{})
+		assert.Contains(t, response, "data")
+		item := response["data"].(map[string]interface{})
 		assert.Equal(t, "Test Item", item["name"]) // Valid name is preserved
 		assert.Equal(t, "kg", item["unit"])
 	})
@@ -256,6 +259,9 @@ func TestGetInventoryItem(t *testing.T) {
 			PreferredVendor: "Sweet Supplies",
 			MinStockLevel:   2.0,
 			MaxStockLevel:   20.0,
+			MinWeeksStock:   2.0,
+			MaxWeeksStock:   8.0,
+			WastageRate:     0.0, // Default to 0% wastage for tests
 		}
 		err := service.CreateInventoryItem(item)
 		require.NoError(t, err)
@@ -270,8 +276,8 @@ func TestGetInventoryItem(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Contains(t, response, "item")
-		retrievedItem := response["item"].(map[string]interface{})
+		assert.Contains(t, response, "data")
+		retrievedItem := response["data"].(map[string]interface{})
 		assert.Equal(t, "Sugar", retrievedItem["name"])
 	})
 
@@ -287,7 +293,7 @@ func TestGetInventoryItem(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Contains(t, response, "error")
-		assert.Contains(t, response["error"], "not found")
+		assert.Contains(t, response["error"].(map[string]interface{})["details"], "record not found")
 	})
 
 	t.Run("Get Inventory Item with Invalid ID", func(t *testing.T) {
@@ -302,7 +308,7 @@ func TestGetInventoryItem(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Contains(t, response, "error")
-		assert.Contains(t, response["error"], "Invalid item ID")
+		assert.Contains(t, response["error"].(map[string]interface{})["details"], "Item ID must be a valid integer.")
 	})
 }
 
@@ -320,6 +326,9 @@ func TestUpdateInventoryItem(t *testing.T) {
 			PreferredVendor: "Bakery Supplies",
 			MinStockLevel:   5.0,
 			MaxStockLevel:   50.0,
+			MinWeeksStock:   2.0,
+			MaxWeeksStock:   8.0,
+			WastageRate:     0.0, // Default to 0% wastage for tests
 		}
 		err := service.CreateInventoryItem(item)
 		require.NoError(t, err)
@@ -343,8 +352,8 @@ func TestUpdateInventoryItem(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Contains(t, response, "item")
-		updatedItem := response["item"].(map[string]interface{})
+		assert.Contains(t, response, "data")
+		updatedItem := response["data"].(map[string]interface{})
 		assert.Equal(t, "Premium Flour", updatedItem["name"])
 		assert.Equal(t, float64(2.50), updatedItem["cost_per_unit"])
 	})
@@ -364,6 +373,9 @@ func TestDeleteInventoryItem(t *testing.T) {
 			PreferredVendor: "Tea Suppliers",
 			MinStockLevel:   1.0,
 			MaxStockLevel:   10.0,
+			MinWeeksStock:   2.0,
+			MaxWeeksStock:   8.0,
+			WastageRate:     0.0, // Default to 0% wastage for tests
 		}
 		err := service.CreateInventoryItem(item)
 		require.NoError(t, err)
@@ -400,8 +412,8 @@ func TestGetMenuItems(t *testing.T) {
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Contains(t, response, "items")
-		items := response["items"].([]interface{})
+		assert.Contains(t, response, "data")
+		items := response["data"].([]interface{})
 		assert.Empty(t, items)
 	})
 
@@ -426,8 +438,8 @@ func TestGetMenuItems(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Contains(t, response, "items")
-		items := response["items"].([]interface{})
+		assert.Contains(t, response, "data")
+		items := response["data"].([]interface{})
 		assert.Len(t, items, 1)
 	})
 }
@@ -453,8 +465,8 @@ func TestCreateMenuItem(t *testing.T) {
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Contains(t, response, "item")
-		item := response["item"].(map[string]interface{})
+		assert.Contains(t, response, "data")
+		item := response["data"].(map[string]interface{})
 		assert.Equal(t, "Latte", item["name"])
 		assert.Equal(t, float64(5.00), item["price"])
 		assert.Equal(t, "drinks", item["category"])
@@ -475,6 +487,11 @@ func TestLogDelivery(t *testing.T) {
 			Unit:            "kg",
 			CostPerUnit:     15.50,
 			PreferredVendor: "Coffee Supply Co.",
+			MinStockLevel:   5.0,
+			MaxStockLevel:   50.0,
+			MinWeeksStock:   2.0,
+			MaxWeeksStock:   8.0,
+			WastageRate:     0.0, // Default to 0% wastage for tests
 		}
 		err := service.CreateInventoryItem(item)
 		require.NoError(t, err)
@@ -497,8 +514,8 @@ func TestLogDelivery(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Contains(t, response, "delivery")
-		delivery := response["delivery"].(map[string]interface{})
+		assert.Contains(t, response, "data")
+		delivery := response["data"].(map[string]interface{})
 		assert.Equal(t, float64(25.0), delivery["quantity"])
 		assert.Equal(t, "Coffee Supply Co.", delivery["vendor"])
 	})
@@ -519,8 +536,8 @@ func TestGetDeliveries(t *testing.T) {
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Contains(t, response, "deliveries")
-		deliveries := response["deliveries"].([]interface{})
+		assert.Contains(t, response, "data")
+		deliveries := response["data"].([]interface{})
 		assert.Empty(t, deliveries)
 	})
 
@@ -532,6 +549,11 @@ func TestGetDeliveries(t *testing.T) {
 			Unit:            "liters",
 			CostPerUnit:     2.50,
 			PreferredVendor: "Local Dairy",
+			MinStockLevel:   10.0,
+			MaxStockLevel:   100.0,
+			MinWeeksStock:   2.0,
+			MaxWeeksStock:   8.0,
+			WastageRate:     0.0, // Default to 0% wastage for tests
 		}
 		err := service.CreateInventoryItem(item)
 		require.NoError(t, err)
@@ -557,8 +579,8 @@ func TestGetDeliveries(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Contains(t, response, "deliveries")
-		deliveries := response["deliveries"].([]interface{})
+		assert.Contains(t, response, "data")
+		deliveries := response["data"].([]interface{})
 		assert.Len(t, deliveries, 1)
 	})
 }
@@ -575,6 +597,11 @@ func TestGetDeliveriesByVendor(t *testing.T) {
 			Unit:            "kg",
 			CostPerUnit:     1.20,
 			PreferredVendor: "Sweet Supplies",
+			MinStockLevel:   2.0,
+			MaxStockLevel:   20.0,
+			MinWeeksStock:   2.0,
+			MaxWeeksStock:   8.0,
+			WastageRate:     0.0, // Default to 0% wastage for tests
 		}
 		err := service.CreateInventoryItem(item)
 		require.NoError(t, err)
@@ -600,8 +627,8 @@ func TestGetDeliveriesByVendor(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Contains(t, response, "deliveries")
-		deliveries := response["deliveries"].([]interface{})
+		assert.Contains(t, response, "data")
+		deliveries := response["data"].([]interface{})
 		assert.Len(t, deliveries, 1)
 	})
 }
@@ -618,6 +645,11 @@ func TestCreateInventorySnapshot(t *testing.T) {
 			Unit:            "kg",
 			CostPerUnit:     15.50,
 			PreferredVendor: "Coffee Supply Co.",
+			MinStockLevel:   5.0,
+			MaxStockLevel:   50.0,
+			MinWeeksStock:   2.0,
+			MaxWeeksStock:   8.0,
+			WastageRate:     0.0, // Default to 0% wastage for tests
 		}
 		err := service.CreateInventoryItem(item)
 		require.NoError(t, err)
@@ -638,8 +670,8 @@ func TestCreateInventorySnapshot(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Contains(t, response, "snapshot")
-		snapshot := response["snapshot"].(map[string]interface{})
+		assert.Contains(t, response, "data")
+		snapshot := response["data"].(map[string]interface{})
 		assert.Contains(t, snapshot, "counts")
 	})
 }
@@ -659,8 +691,8 @@ func TestGetInventorySnapshots(t *testing.T) {
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Contains(t, response, "snapshots")
-		snapshots := response["snapshots"].([]interface{})
+		assert.Contains(t, response, "data")
+		snapshots := response["data"].([]interface{})
 		assert.Empty(t, snapshots)
 	})
 
@@ -672,6 +704,11 @@ func TestGetInventorySnapshots(t *testing.T) {
 			Unit:            "kg",
 			CostPerUnit:     8.00,
 			PreferredVendor: "Tea Suppliers",
+			MinStockLevel:   1.0,
+			MaxStockLevel:   10.0,
+			MinWeeksStock:   2.0,
+			MaxWeeksStock:   8.0,
+			WastageRate:     0.0, // Default to 0% wastage for tests
 		}
 		err := service.CreateInventoryItem(item)
 		require.NoError(t, err)
@@ -695,8 +732,8 @@ func TestGetInventorySnapshots(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Contains(t, response, "snapshots")
-		snapshots := response["snapshots"].([]interface{})
+		assert.Contains(t, response, "data")
+		snapshots := response["data"].([]interface{})
 		assert.Len(t, snapshots, 1)
 	})
 }
@@ -713,6 +750,11 @@ func TestGetInventoryItemsByVendor(t *testing.T) {
 			Unit:            "kg",
 			CostPerUnit:     15.50,
 			PreferredVendor: "Coffee Supply Co.",
+			MinStockLevel:   5.0,
+			MaxStockLevel:   50.0,
+			MinWeeksStock:   2.0,
+			MaxWeeksStock:   8.0,
+			WastageRate:     0.0, // Default to 0% wastage for tests
 		}
 		err := service.CreateInventoryItem(item1)
 		require.NoError(t, err)
@@ -723,6 +765,11 @@ func TestGetInventoryItemsByVendor(t *testing.T) {
 			Unit:            "kg",
 			CostPerUnit:     8.00,
 			PreferredVendor: "Coffee Supply Co.",
+			MinStockLevel:   1.0,
+			MaxStockLevel:   10.0,
+			MinWeeksStock:   2.0,
+			MaxWeeksStock:   8.0,
+			WastageRate:     0.0, // Default to 0% wastage for tests
 		}
 		err = service.CreateInventoryItem(item2)
 		require.NoError(t, err)
@@ -737,8 +784,8 @@ func TestGetInventoryItemsByVendor(t *testing.T) {
 		err = json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Contains(t, response, "items")
-		items := response["items"].([]interface{})
+		assert.Contains(t, response, "data")
+		items := response["data"].([]interface{})
 		assert.Len(t, items, 2)
 	})
 
@@ -753,8 +800,8 @@ func TestGetInventoryItemsByVendor(t *testing.T) {
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Contains(t, response, "items")
-		items := response["items"].([]interface{})
+		assert.Contains(t, response, "data")
+		items := response["data"].([]interface{})
 		assert.Empty(t, items)
 	})
 }
@@ -782,8 +829,8 @@ func TestInventoryHandlerErrors(t *testing.T) {
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
-		assert.Contains(t, response, "item")
-		item := response["item"].(map[string]interface{})
+		assert.Contains(t, response, "data")
+		item := response["data"].(map[string]interface{})
 		assert.Equal(t, "Test Item", item["name"])
 		assert.Equal(t, "kg", item["unit"])                // Provided unit
 		assert.Equal(t, float64(0), item["cost_per_unit"]) // Default 0
@@ -806,7 +853,7 @@ func TestInventoryHandlerErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Contains(t, response, "error")
-		assert.Contains(t, response["error"], "not found")
+		assert.Contains(t, response["error"].(map[string]interface{})["details"], "record not found")
 	})
 
 	t.Run("Delete Non-Existent Inventory Item", func(t *testing.T) {
@@ -821,6 +868,6 @@ func TestInventoryHandlerErrors(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Contains(t, response, "error")
-		assert.Contains(t, response["error"], "not found")
+		assert.Contains(t, response["error"].(map[string]interface{})["details"], "record not found")
 	})
 }

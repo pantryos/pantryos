@@ -81,6 +81,7 @@ export interface InventoryItem {
   max_stock_level: number;
   min_weeks_stock: number; // Minimum weeks of stock to maintain
   max_weeks_stock: number; // Maximum weeks of stock to maintain
+  wastage_rate: number; // Wastage rate as a percentage
   current_stock: number; // Current stock level from latest snapshot
   category_id?: number;
 }
@@ -193,6 +194,7 @@ export interface CreateInventoryItemRequest {
   max_stock_level: number;
   min_weeks_stock: number; // Minimum weeks of stock to maintain
   max_weeks_stock: number; // Maximum weeks of stock to maintain
+  wastage_rate: number; // Wastage rate as a percentage
   current_stock?: number; // Optional - defaults to 0 if not provided
   category_id?: number;
 }

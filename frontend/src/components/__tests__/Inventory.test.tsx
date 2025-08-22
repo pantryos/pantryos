@@ -15,7 +15,7 @@ const TestWrapper: React.FC<{ children: React.ReactNode }> = ({ children }) => (
 
 // Test the inventory component functionality
 describe('Inventory Component', () => {
-  test('should have min_weeks_stock and max_weeks_stock fields in form data structure', () => {
+  test('should have min_weeks_stock, max_weeks_stock, and wastage_rate fields in form data structure', () => {
     // Test that the component is designed to handle the new fields
     const expectedFormFields = [
       'name',
@@ -25,13 +25,15 @@ describe('Inventory Component', () => {
       'min_stock_level',
       'max_stock_level',
       'min_weeks_stock',
-      'max_weeks_stock'
+      'max_weeks_stock',
+      'wastage_rate'
     ];
 
     // Verify all expected fields are present
-    expect(expectedFormFields).toHaveLength(8);
+    expect(expectedFormFields).toHaveLength(9);
     expect(expectedFormFields).toContain('min_weeks_stock');
     expect(expectedFormFields).toContain('max_weeks_stock');
+    expect(expectedFormFields).toContain('wastage_rate');
     expect(expectedFormFields).toContain('name');
     expect(expectedFormFields).toContain('unit');
   });
@@ -47,7 +49,7 @@ describe('Inventory Component', () => {
     expect(defaultMaxWeeksStock).toBeGreaterThan(defaultMinWeeksStock);
   });
 
-  test('should have proper form field configuration for weeks stock fields', () => {
+  test('should have proper form field configuration for weeks stock and wastage rate fields', () => {
     // Test that the form fields are properly configured
     const minFieldConfig = {
       label: 'Minimum Weeks of Stock',
@@ -65,6 +67,15 @@ describe('Inventory Component', () => {
       helperText: 'Number of weeks of stock to maintain as maximum'
     };
 
+    const wastageFieldConfig = {
+      label: 'Wastage Rate (%)',
+      type: 'number',
+      min: 0,
+      max: 100,
+      step: 0.1,
+      helperText: 'Percentage of stock that is typically wasted/spoiled'
+    };
+
     expect(minFieldConfig.label).toBe('Minimum Weeks of Stock');
     expect(minFieldConfig.type).toBe('number');
     expect(minFieldConfig.min).toBe(0);
@@ -76,9 +87,16 @@ describe('Inventory Component', () => {
     expect(maxFieldConfig.min).toBe(0);
     expect(maxFieldConfig.step).toBe(0.5);
     expect(maxFieldConfig.helperText).toContain('weeks of stock');
+
+    expect(wastageFieldConfig.label).toBe('Wastage Rate (%)');
+    expect(wastageFieldConfig.type).toBe('number');
+    expect(wastageFieldConfig.min).toBe(0);
+    expect(wastageFieldConfig.max).toBe(100);
+    expect(wastageFieldConfig.step).toBe(0.1);
+    expect(wastageFieldConfig.helperText).toContain('wasted/spoiled');
   });
 
-  test('should have proper data grid column configuration for weeks stock fields', () => {
+  test('should have proper data grid column configuration for weeks stock and wastage rate fields', () => {
     // Test that the data grid columns are properly configured
     const minColumnConfig = {
       field: 'min_weeks_stock',
@@ -94,6 +112,13 @@ describe('Inventory Component', () => {
       valueFormatter: (value: number) => `${value} weeks`
     };
 
+    const wastageColumnConfig = {
+      field: 'wastage_rate',
+      headerName: 'Wastage Rate',
+      width: 120,
+      valueFormatter: (value: number) => `${value}%`
+    };
+
     expect(minColumnConfig.field).toBe('min_weeks_stock');
     expect(minColumnConfig.headerName).toBe('Min Weeks');
     expect(minColumnConfig.width).toBe(120);
@@ -103,5 +128,10 @@ describe('Inventory Component', () => {
     expect(maxColumnConfig.headerName).toBe('Max Weeks');
     expect(maxColumnConfig.width).toBe(120);
     expect(maxColumnConfig.valueFormatter(8)).toBe('8 weeks');
+
+    expect(wastageColumnConfig.field).toBe('wastage_rate');
+    expect(wastageColumnConfig.headerName).toBe('Wastage Rate');
+    expect(wastageColumnConfig.width).toBe(120);
+    expect(wastageColumnConfig.valueFormatter(5.5)).toBe('5.5%');
   });
 }); 

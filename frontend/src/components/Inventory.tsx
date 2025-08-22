@@ -54,6 +54,7 @@ const Inventory: React.FC = () => {
     max_stock_level: 0,
     min_weeks_stock: 2, // Default to 2 weeks
     max_weeks_stock: 8, // Default to 8 weeks
+    wastage_rate: 0, // Default to 0% wastage
     category_id: undefined,
   });
 
@@ -110,6 +111,7 @@ const Inventory: React.FC = () => {
       max_stock_level: 0,
       min_weeks_stock: 2, // Default to 2 weeks
       max_weeks_stock: 8, // Default to 8 weeks
+      wastage_rate: 0, // Default to 0% wastage
       category_id: undefined,
     });
     setDialogOpen(true);
@@ -127,6 +129,7 @@ const Inventory: React.FC = () => {
       max_stock_level: item.max_stock_level,
       min_weeks_stock: item.min_weeks_stock,
       max_weeks_stock: item.max_weeks_stock,
+      wastage_rate: item.wastage_rate,
       category_id: item.category_id,
     });
     setDialogOpen(true);
@@ -241,6 +244,15 @@ const Inventory: React.FC = () => {
       valueFormatter: (params: any) => {
         const value = Number(params);
         return !isNaN(value) ? `${value} weeks` : '';
+      }
+    },
+    { 
+      field: 'wastage_rate', 
+      headerName: 'Wastage Rate', 
+      width: 120,
+      valueFormatter: (params: any) => {
+        const value = Number(params);
+        return !isNaN(value) ? `${value}%` : '0%';
       }
     },
     { 
@@ -463,6 +475,16 @@ const Inventory: React.FC = () => {
                 margin="normal"
                 inputProps={{ min: 0, step: 0.5 }}
                 helperText="Number of weeks of stock to maintain as maximum"
+              />
+              <TextField
+                fullWidth
+                label="Wastage Rate (%)"
+                type="number"
+                value={formData.wastage_rate}
+                onChange={(e) => handleInputChange('wastage_rate', parseFloat(e.target.value) || 0)}
+                margin="normal"
+                inputProps={{ min: 0, max: 100, step: 0.1 }}
+                helperText="Percentage of stock that is typically wasted/spoiled"
               />
             </Box>
           </DialogContent>
