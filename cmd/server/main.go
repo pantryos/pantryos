@@ -46,7 +46,7 @@ import (
 func main() {
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8085"
+		port = "8086"
 	}
 
 	db, err := database.Initialize()
