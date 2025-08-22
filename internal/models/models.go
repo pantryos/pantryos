@@ -53,28 +53,31 @@ type Organization struct {
 	Name        string    `json:"name" gorm:"not null"`
 	Description string    `json:"description"`
 	Type        string    `json:"type" gorm:"not null;default:'multi_location'"` // single_location, multi_location, enterprise
+	Status      string    `json:"status" gorm:"not null;default:'active'"`       // active, inactive, suspended
 	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt   time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
 }
 
-// User represents a system user with authentication and authorization
-// Users belong to specific accounts and have roles that determine their permissions
-// The password field is omitted from JSON responses for security
+// User represents a system user with authentication
+// Users are now decoupled from accounts and can belong to multiple accounts
+// through UserAccount relationships
 type User struct {
 	ID         int       `json:"id" gorm:"primaryKey;autoIncrement"`
 	Email      string    `json:"email" gorm:"uniqueIndex;not null"`
 	Password   string    `json:"-" gorm:"not null"` // Omit from JSON responses for security
-	AccountID  int       `json:"account_id" gorm:"not null;index"`
-	IsVerified bool      `json:"isVerified" gorm:"not null;default:false"`
-	Role       string    `json:"role" gorm:"not null;default:'user'"` // user, manager, admin, org_admin
+	FirstName  string    `json:"first_name" gorm:"not null"`
+	LastName   string    `json:"last_name" gorm:"not null"`
+	IsVerified bool      `json:"is_verified" gorm:"not null;default:false"`
+	Status     string    `json:"status" gorm:"not null;default:'active'"` // active, inactive, suspended
 	CreatedAt  time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt  time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
 }
 
 // Account represents a business location that can exist independently or within an organization
 // This could be a standalone coffee shop or part of a larger chain
-// Each account has its own inventory, menu items, and users
+// Each account has its own inventory, menu items, and users (through UserAccount)
 type Account struct {
 	ID             int       `json:"id" gorm:"primaryKey;autoIncrement"`
 	OrganizationID *int      `json:"organization_id" gorm:"index"` // Optional - null for standalone businesses
@@ -86,6 +89,56 @@ type Account struct {
 	Status         string    `json:"status" gorm:"not null;default:'active'"`                 // active, inactive, suspended
 	CreatedAt      time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt      time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
+}
+
+// UserAccount represents the many-to-many relationship between users and accounts
+// This allows users to belong to multiple accounts with different roles and permissions
+type UserAccount struct {
+	ID        int       `json:"id" gorm:"primaryKey;autoIncrement"`
+	UserID    int       `json:"user_id" gorm:"not null;index"`
+	AccountID int       `json:"account_id" gorm:"not null;index"`
+	Role      string    `json:"role" gorm:"not null;default:'user'"` // user, manager, admin
+	IsPrimary bool      `json:"is_primary" gorm:"not null;default:false"` // Primary account for the user
+	Status    string    `json:"status" gorm:"not null;default:'active'"`  // active, inactive, suspended
+	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
+}
+
+// UserOrganization represents the relationship between users and organizations
+// This allows users to have organization-wide roles and permissions
+type UserOrganization struct {
+	ID             int       `json:"id" gorm:"primaryKey;autoIncrement"`
+	UserID         int       `json:"user_id" gorm:"not null;index"`
+	OrganizationID int       `json:"organization_id" gorm:"not null;index"`
+	Role           string    `json:"role" gorm:"not null;default:'member'"` // member, admin, owner
+	Status         string    `json:"status" gorm:"not null;default:'active'"` // active, inactive, suspended
+	CreatedAt      time.Time `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt      time.Time `json:"updated_at" gorm:"autoUpdateTime"`
+	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
+}
+
+// Permission represents a specific permission that can be granted to users
+// This provides fine-grained access control
+type Permission struct {
+	ID          int       `json:"id" gorm:"primaryKey;autoIncrement"`
+	Name        string    `json:"name" gorm:"not null;uniqueIndex"` // e.g., "inventory.read", "users.manage"
+	Description string    `json:"description"`
+	Resource    string    `json:"resource" gorm:"not null"` // e.g., "inventory", "users", "reports"
+	Action      string    `json:"action" gorm:"not null"`   // e.g., "read", "write", "delete"
+	CreatedAt   time.Time `json:"created_at" gorm:"autoCreateTime"`
+	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
+}
+
+// RolePermission represents the many-to-many relationship between roles and permissions
+// This defines what permissions each role has
+type RolePermission struct {
+	ID           int       `json:"id" gorm:"primaryKey;autoIncrement"`
+	Role         string    `json:"role" gorm:"not null;index"` // user, manager, admin, org_admin, org_owner
+	PermissionID int       `json:"permission_id" gorm:"not null;index"`
+	Scope        string    `json:"scope" gorm:"not null;default:'account'"` // account, organization, system
+	CreatedAt    time.Time `json:"created_at" gorm:"autoCreateTime"`
 	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
 }
 
@@ -264,12 +317,30 @@ type AccountInvitation struct {
 	AccountID  int        `json:"account_id" gorm:"not null;index"`
 	Email      string     `json:"email" gorm:"not null;index"`
 	InvitedBy  int        `json:"invited_by" gorm:"not null"`               // User ID who sent the invitation
+	Role       string     `json:"role" gorm:"not null;default:'user'"`      // Role to assign when user accepts
 	Status     string     `json:"status" gorm:"not null;default:'pending'"` // pending, accepted, expired, revoked
 	InvitedAt  time.Time  `json:"invited_at" gorm:"autoCreateTime"`
 	AcceptedAt *time.Time `json:"accepted_at"`
 	ExpiresAt  time.Time  `json:"expires_at" gorm:"not null"` // Invitation expiration date
 	CreatedAt  time.Time  `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt  time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
+	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
+}
+
+// OrganizationInvitation represents an invitation for a user to join an organization
+// This allows organization admins to invite users with organization-wide roles
+type OrganizationInvitation struct {
+	ID             int        `json:"id" gorm:"primaryKey;autoIncrement"`
+	OrganizationID int        `json:"organization_id" gorm:"not null;index"`
+	Email          string     `json:"email" gorm:"not null;index"`
+	InvitedBy      int        `json:"invited_by" gorm:"not null"`               // User ID who sent the invitation
+	Role           string     `json:"role" gorm:"not null;default:'member'"`    // Role to assign when user accepts
+	Status         string     `json:"status" gorm:"not null;default:'pending'"` // pending, accepted, expired, revoked
+	InvitedAt      time.Time  `json:"invited_at" gorm:"autoCreateTime"`
+	AcceptedAt     *time.Time `json:"accepted_at"`
+	ExpiresAt      time.Time  `json:"expires_at" gorm:"not null"` // Invitation expiration date
+	CreatedAt      time.Time  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt      time.Time  `json:"updated_at" gorm:"autoUpdateTime"`
 	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
 }
 
@@ -286,6 +357,30 @@ const (
 	BusinessTypeSingleLocation = "single_location" // Standalone business (no organization)
 	BusinessTypeMultiLocation  = "multi_location"  // Multiple locations under one organization
 	BusinessTypeEnterprise     = "enterprise"      // Large enterprise with complex hierarchy
+)
+
+// Role constants
+const (
+	RoleUser        = "user"        // Basic user permissions
+	RoleManager     = "manager"     // Manager permissions within account
+	RoleAdmin       = "admin"       // Admin permissions within account
+	RoleOrgMember   = "member"      // Organization member
+	RoleOrgAdmin    = "org_admin"   // Organization admin
+	RoleOrgOwner    = "org_owner"   // Organization owner
+)
+
+// Status constants
+const (
+	StatusActive    = "active"
+	StatusInactive  = "inactive"
+	StatusSuspended = "suspended"
+)
+
+// Scope constants for permissions
+const (
+	ScopeAccount      = "account"      // Account-level permissions
+	ScopeOrganization = "organization" // Organization-level permissions
+	ScopeSystem       = "system"       // System-level permissions
 )
 
 // EmailVerificationToken represents a temporary token for email verification
@@ -348,6 +443,7 @@ const (
 	EmailTypeLowStockAlert     = "low_stock_alert"
 	EmailTypePasswordReset     = "password_reset"
 	EmailTypeAccountInvite     = "account_invite"
+	EmailTypeOrgInvite         = "organization_invite"
 )
 
 // Token type constants
