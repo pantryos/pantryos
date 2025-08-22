@@ -1,8 +1,9 @@
-# Franchise vs Independent Location Structure
+# User, Organization, and Account Structure
 
 ## Overview
 
-PantryOS needs to support two distinct business models:
+PantryOS supports two distinct business models through a flexible user, organization, and account structure:
+
 1. **Independent Locations** - Single business owners
 2. **Franchise Operations** - Multi-location businesses with franchisor oversight
 
@@ -15,6 +16,7 @@ User (Owner) → Account (Single Location)
 - Simple, direct relationship
 - Owner has full control over their location
 - No organizational hierarchy needed
+- Perfect for single coffee shops, restaurants, etc.
 
 ### Franchise Model
 ```
@@ -22,8 +24,12 @@ Organization (Franchisor) → Multiple Accounts (Franchise Locations)
 ├── Franchisor Users (Corporate) → Organization + All Accounts
 └── Franchisee Users (Location Owners) → Their Specific Account
 ```
+- Scalable for growing franchise operations
+- Flexible access control for different user types
+- Brand consistency across locations
+- Cross-location reporting and insights
 
-## Refined Data Structure
+## Data Model
 
 ### Core Entities
 
@@ -93,12 +99,56 @@ type UserOrganization struct {
     ID             int       `json:"id"`
     UserID         int       `json:"user_id"`
     OrganizationID int       `json:"organization_id"`
-    Role           string    `json:"role"` // franchisor, franchise_admin, franchise_support
+    Role           string    `json:"role"` // franchisor, franchise_admin, franchise_support, franchisee
     Status         string    `json:"status"` // active, inactive, suspended
     CreatedAt      time.Time `json:"created_at"`
     UpdatedAt      time.Time `json:"updated_at"`
 }
 ```
+
+### Permission System
+
+#### Permission
+```go
+type Permission struct {
+    ID          int       `json:"id"`
+    Name        string    `json:"name"` // e.g., "inventory.read"
+    Description string    `json:"description"`
+    Resource    string    `json:"resource"` // e.g., "inventory", "users"
+    Action      string    `json:"action"` // e.g., "read", "write", "delete"
+    CreatedAt   time.Time `json:"created_at"`
+}
+```
+
+#### RolePermission
+```go
+type RolePermission struct {
+    ID           int       `json:"id"`
+    Role         string    `json:"role"` // user, manager, admin, org_admin, org_owner
+    PermissionID int       `json:"permission_id"`
+    Scope        string    `json:"scope"` // account, organization, system
+    CreatedAt    time.Time `json:"created_at"`
+}
+```
+
+## Role System
+
+### Account-Level Roles
+- **owner**: Full access to location (business owner/franchisee)
+- **manager**: Manage inventory, orders, employees
+- **employee**: Basic operations (view inventory, create orders)
+
+### Organization-Level Roles
+- **franchisor**: Full access to all locations and organization
+- **franchise_admin**: Manage franchise operations
+- **franchise_support**: Support multiple locations
+- **franchisee**: Owner of specific franchise location
+
+### Business Types
+- **independent**: Standalone business (no organization)
+- **franchise**: Franchise location under organization
+- **multi_location**: Multiple locations under one organization (non-franchise)
+- **enterprise**: Large enterprise with complex hierarchy
 
 ## Access Patterns
 
@@ -139,44 +189,6 @@ User (Support) → UserAccount (manager role) → Multiple Accounts (as needed)
 - Limited access to each location
 - Can access franchise-wide support tools
 
-## Permission System
-
-### Permission Scopes
-- **Account**: Location-specific permissions
-- **Organization**: Franchise-wide permissions
-- **System**: Platform-wide permissions
-
-### Role Hierarchy
-
-#### Independent Location Roles
-- **owner**: Full access to location
-- **manager**: Manage inventory, orders, employees
-- **employee**: Basic operations (view inventory, create orders)
-
-#### Franchise Roles
-- **franchisor**: Full access to all locations and organization
-- **franchise_admin**: Manage franchise operations
-- **franchise_support**: Support multiple locations
-- **franchisee**: Owner of specific location
-- **franchise_manager**: Manager of specific location
-
-## Implementation Strategy
-
-### Phase 1: Independent Location Support
-1. Simple user → account relationship
-2. Basic role system (owner, manager, employee)
-3. Single location focus
-
-### Phase 2: Franchise Support
-1. Add organization structure
-2. Implement cross-location access
-3. Add franchise-specific roles and permissions
-
-### Phase 3: Advanced Features
-1. Franchise-wide reporting
-2. Brand consistency tools
-3. Multi-location analytics
-
 ## Use Case Examples
 
 ### Independent Coffee Shop
@@ -205,7 +217,7 @@ Organization: "Coffee Chain Corp"
     └── Access: Full control over Uptown location
 ```
 
-## Benefits of This Approach
+## Benefits
 
 ### For Independent Locations
 - **Simple setup**: Direct user → account relationship
@@ -223,25 +235,113 @@ Organization: "Coffee Chain Corp"
 - **Flexible permissions**: Granular access control
 - **Future-proof**: Can evolve from independent to franchise
 
-## Migration Considerations
+## Implementation Strategy
 
-### From Independent to Franchise
-1. Create organization for the franchisor
-2. Link existing account to organization
-3. Update user roles and permissions
-4. Add franchise-specific features
+### Phase 1: Independent Location Support
+1. Simple user → account relationship
+2. Basic role system (owner, manager, employee)
+3. Single location focus
 
-### From Franchise to Independent
-1. Remove organization relationships
-2. Simplify user roles
-3. Maintain account data integrity
-4. Update access patterns
+### Phase 2: Franchise Support
+1. Add organization structure
+2. Implement cross-location access
+3. Add franchise-specific roles and permissions
 
-## Next Steps
+### Phase 3: Advanced Features
+1. Franchise-wide reporting
+2. Brand consistency tools
+3. Multi-location analytics
 
-1. **Validate this structure** with potential customers
-2. **Implement Phase 1** (independent locations)
-3. **Test with real users** before adding franchise complexity
-4. **Iterate based on feedback** and actual usage patterns
+## Migration Strategy
 
-This structure provides the flexibility to serve both business models while maintaining simplicity for independent locations and power for franchise operations.
+### Database Migration
+- Run migration script: `scripts/migrate_user_structure.sql`
+- Migrate existing user-account relationships to UserAccount table
+- Set up default permissions for existing roles
+- Create organization relationships where needed
+
+### Backend Updates
+- Update authentication to support multiple accounts
+- Implement new permission checking system
+- Add account switching functionality
+- Update user management endpoints
+
+### Frontend Updates
+- Update user interface for account switching
+- Implement permission-based UI components
+- Add organization management features
+- Update user profile and settings
+
+## Security Considerations
+
+### Permission Inheritance
+- Organization permissions don't automatically grant account permissions
+- Explicit permission assignment required
+- Audit trail for all permission changes
+
+### Account Isolation
+- Users can only access accounts they're explicitly assigned to
+- Cross-account data access requires explicit permissions
+- Proper validation at all API endpoints
+
+### Token Security
+- JWT tokens include account context
+- Token expiration and refresh mechanisms
+- Secure token storage and transmission
+
+## Testing Strategy
+
+### Unit Tests
+- Test new permission system
+- Test user-account relationships
+- Test role validation
+
+### Integration Tests
+- Test authentication flows
+- Test permission checking
+- Test account switching
+
+### End-to-End Tests
+- Test complete user workflows
+- Test multi-account scenarios
+- Test organization management
+
+## Performance Considerations
+
+### Database Optimization
+- Proper indexing on relationship tables
+- Efficient permission queries
+- Caching for frequently accessed permissions
+
+### API Optimization
+- Batch permission checking
+- Efficient user account queries
+- Proper pagination for large datasets
+
+### Frontend Optimization
+- Lazy loading of account data
+- Efficient permission checking
+- Optimistic UI updates
+
+## Future Enhancements
+
+### Advanced Permissions
+- Time-based permissions
+- Conditional permissions
+- Permission templates
+
+### Organization Features
+- Organization hierarchies
+- Department management
+- Cross-organization reporting
+
+### User Management
+- Bulk user operations
+- User provisioning workflows
+- Advanced user profiles
+
+## Conclusion
+
+This structure provides the flexibility to serve both business models while maintaining simplicity for independent locations and power for franchise operations. The unified approach ensures a consistent user experience while supporting the specific needs of each business type.
+
+The migration strategy ensures a smooth transition with minimal disruption, and the comprehensive testing approach will ensure reliability and security throughout the implementation process.
