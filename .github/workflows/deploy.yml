@@ -91,10 +91,6 @@ jobs:
           DB_PASSWORD=${{ secrets.DB_PASSWORD }}
           DB_NAME=${{ secrets.DB_NAME }}
           DB_SSLMODE=${{ secrets.DB_SSLMODE }}
-          ACCESS_SECRET=${{ secrets.ACCESS_SECRET }}
-          REFRESH_SECRET=${{ secrets.REFRESH_SECRET }}
-          ACCESS_EXPIRATION=${{ secrets.ACCESS_EXPIRATION }}
-          REFRESH_EXPIRATION=${{ secrets.REFRESH_EXPIRATION }}
           EOF
           )
           echo "ENV_FILE_CONTENT<<EOF" >> $GITHUB_OUTPUT
