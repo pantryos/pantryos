@@ -158,7 +158,7 @@ func TestCategoryHandler_GetCategories(t *testing.T) {
 	err = json.Unmarshal(w.Body.Bytes(), &response)
 	assert.NoError(t, err)
 
-	categories := response["categories"].([]interface{})
+	categories := response["data"].([]interface{})
 	assert.Len(t, categories, 2)
 }
 
