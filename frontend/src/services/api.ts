@@ -27,7 +27,7 @@ class ApiService {
 
   constructor() {
     // Use environment variable or default to localhost
-    this.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+    this.baseURL = process.env.REACT_APP_API_URL || 'http://198.199.81.24/pantryos';
 
     this.api = axios.create({
       baseURL: this.baseURL,
