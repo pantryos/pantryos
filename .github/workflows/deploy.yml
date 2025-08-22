@@ -9,10 +9,10 @@ on:
       - main
 
 env:
-  GO_VERSION: '1.23'
+  GO_VERSION: '1.24'
   APP_NAME: pantryos
   DOCKER_IMAGE_NAME_BE: pantryos-be
-  DIGITALOCEAN_REGISTRY: registry.digitalocean.com/pantryos-image
+  DIGITALOCEAN_REGISTRY: registry.digitalocean.com/limestone-image
 
 jobs:
 #  tests:
@@ -36,7 +36,7 @@ jobs:
 #        run: go test ./... -v
 
   build:
-    name: Build Backend
+    name: Build
 #    needs: tests
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -66,7 +66,7 @@ jobs:
             ${{ env.DIGITALOCEAN_REGISTRY }}/${{ env.DOCKER_IMAGE_NAME_BE }}:latest
 
   deploy:
-    name: Deploy Backend
+    name: Deploy
     needs: build
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
