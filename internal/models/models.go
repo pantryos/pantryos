@@ -94,11 +94,13 @@ type Account struct {
 
 // UserAccount represents the many-to-many relationship between users and accounts
 // This allows users to belong to multiple accounts with different roles and permissions
+// For independent locations: owner, manager, employee
+// For franchise locations: owner (franchisee), manager, employee
 type UserAccount struct {
 	ID        int       `json:"id" gorm:"primaryKey;autoIncrement"`
 	UserID    int       `json:"user_id" gorm:"not null;index"`
 	AccountID int       `json:"account_id" gorm:"not null;index"`
-	Role      string    `json:"role" gorm:"not null;default:'user'"` // user, manager, admin
+	Role      string    `json:"role" gorm:"not null;default:'employee'"`  // owner, manager, employee
 	IsPrimary bool      `json:"is_primary" gorm:"not null;default:false"` // Primary account for the user
 	Status    string    `json:"status" gorm:"not null;default:'active'"`  // active, inactive, suspended
 	CreatedAt time.Time `json:"created_at" gorm:"autoCreateTime"`
@@ -108,12 +110,13 @@ type UserAccount struct {
 
 // UserOrganization represents the relationship between users and organizations
 // This allows users to have organization-wide roles and permissions
+// For franchise operations: franchisor, franchise_admin, franchise_support, franchisee
 type UserOrganization struct {
 	ID             int       `json:"id" gorm:"primaryKey;autoIncrement"`
 	UserID         int       `json:"user_id" gorm:"not null;index"`
 	OrganizationID int       `json:"organization_id" gorm:"not null;index"`
-	Role           string    `json:"role" gorm:"not null;default:'member'"` // member, admin, owner
-	Status         string    `json:"status" gorm:"not null;default:'active'"` // active, inactive, suspended
+	Role           string    `json:"role" gorm:"not null;default:'franchisee'"` // franchisor, franchise_admin, franchise_support, franchisee
+	Status         string    `json:"status" gorm:"not null;default:'active'"`   // active, inactive, suspended
 	CreatedAt      time.Time `json:"created_at" gorm:"autoCreateTime"`
 	UpdatedAt      time.Time `json:"updated_at" gorm:"autoUpdateTime"`
 	// Note: Foreign key relationships are handled in application logic for ramsql compatibility
@@ -317,7 +320,7 @@ type AccountInvitation struct {
 	AccountID  int        `json:"account_id" gorm:"not null;index"`
 	Email      string     `json:"email" gorm:"not null;index"`
 	InvitedBy  int        `json:"invited_by" gorm:"not null"`               // User ID who sent the invitation
-	Role       string     `json:"role" gorm:"not null;default:'user'"`      // Role to assign when user accepts
+	Role       string     `json:"role" gorm:"not null;default:'employee'"`  // Role to assign when user accepts (owner, manager, employee)
 	Status     string     `json:"status" gorm:"not null;default:'pending'"` // pending, accepted, expired, revoked
 	InvitedAt  time.Time  `json:"invited_at" gorm:"autoCreateTime"`
 	AcceptedAt *time.Time `json:"accepted_at"`
@@ -333,9 +336,9 @@ type OrganizationInvitation struct {
 	ID             int        `json:"id" gorm:"primaryKey;autoIncrement"`
 	OrganizationID int        `json:"organization_id" gorm:"not null;index"`
 	Email          string     `json:"email" gorm:"not null;index"`
-	InvitedBy      int        `json:"invited_by" gorm:"not null"`               // User ID who sent the invitation
-	Role           string     `json:"role" gorm:"not null;default:'member'"`    // Role to assign when user accepts
-	Status         string     `json:"status" gorm:"not null;default:'pending'"` // pending, accepted, expired, revoked
+	InvitedBy      int        `json:"invited_by" gorm:"not null"`                // User ID who sent the invitation
+	Role           string     `json:"role" gorm:"not null;default:'franchisee'"` // Role to assign when user accepts (franchisor, franchise_admin, franchise_support, franchisee)
+	Status         string     `json:"status" gorm:"not null;default:'pending'"`  // pending, accepted, expired, revoked
 	InvitedAt      time.Time  `json:"invited_at" gorm:"autoCreateTime"`
 	AcceptedAt     *time.Time `json:"accepted_at"`
 	ExpiresAt      time.Time  `json:"expires_at" gorm:"not null"` // Invitation expiration date
@@ -354,19 +357,34 @@ const (
 
 // Business type constants
 const (
-	BusinessTypeSingleLocation = "single_location" // Standalone business (no organization)
-	BusinessTypeMultiLocation  = "multi_location"  // Multiple locations under one organization
-	BusinessTypeEnterprise     = "enterprise"      // Large enterprise with complex hierarchy
+	BusinessTypeIndependent   = "independent"    // Standalone business (no organization)
+	BusinessTypeFranchise     = "franchise"      // Franchise location under organization
+	BusinessTypeMultiLocation = "multi_location" // Multiple locations under one organization (non-franchise)
+	BusinessTypeEnterprise    = "enterprise"     // Large enterprise with complex hierarchy
+
+	// Legacy constants (for backward compatibility)
+	BusinessTypeSingleLocation = "single_location" // Deprecated - use BusinessTypeIndependent
 )
 
 // Role constants
 const (
-	RoleUser        = "user"        // Basic user permissions
-	RoleManager     = "manager"     // Manager permissions within account
-	RoleAdmin       = "admin"       // Admin permissions within account
-	RoleOrgMember   = "member"      // Organization member
-	RoleOrgAdmin    = "org_admin"   // Organization admin
-	RoleOrgOwner    = "org_owner"   // Organization owner
+	// Account-level roles (for independent locations and franchise locations)
+	RoleOwner    = "owner"    // Full access to location (business owner)
+	RoleManager  = "manager"  // Manage inventory, orders, employees
+	RoleEmployee = "employee" // Basic operations (view inventory, create orders)
+
+	// Organization-level roles (for franchise operations)
+	RoleFranchisor       = "franchisor"        // Full access to all locations and organization
+	RoleFranchiseAdmin   = "franchise_admin"   // Manage franchise operations
+	RoleFranchiseSupport = "franchise_support" // Support multiple locations
+	RoleFranchisee       = "franchisee"        // Owner of specific franchise location
+
+	// Legacy roles (for backward compatibility)
+	RoleUser      = "user"      // Basic user permissions (deprecated)
+	RoleAdmin     = "admin"     // Admin permissions within account (deprecated)
+	RoleOrgMember = "member"    // Organization member (deprecated)
+	RoleOrgAdmin  = "org_admin" // Organization admin (deprecated)
+	RoleOrgOwner  = "org_owner" // Organization owner (deprecated)
 )
 
 // Status constants
