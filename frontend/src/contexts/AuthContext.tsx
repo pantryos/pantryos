@@ -55,7 +55,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Login function
   const login = async (email: string, password: string) => {
     try {
-      setLoading(true);
+      // setLoading(true);
       const response = await apiService.login({ email, password });
       apiService.setAuthToken(response.token);
       setUser(response.user);
@@ -64,7 +64,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('Login failed:', error);
       throw error;
     } finally {
-      setLoading(false);
+      // setLoading(false);
     }
   };
 
@@ -89,6 +89,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     apiService.clearAuthToken();
     setUser(null);
   };
+
+    useEffect(() => {
+    const handleAuthError = () => {
+      logout();
+    };
+
+    window.addEventListener('auth-error', handleAuthError);
+    return () => {
+      window.removeEventListener('auth-error', handleAuthError);
+    };
+  }, []); 
 
   // Value object that will be given to the context
   const value: AuthContextType = {

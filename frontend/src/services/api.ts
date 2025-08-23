@@ -12,7 +12,6 @@ import {
   UpdateInventoryItemRequest,
   CreateMenuItemRequest,
   CreateDeliveryRequest,
-  ApiResponse,
   StandardAPIResponse,
   Category,
   CreateCategoryRequest,
@@ -58,7 +57,7 @@ class ApiService {
           // Token expired or invalid, redirect to login
           localStorage.removeItem('token');
           localStorage.removeItem('user');
-          window.location.href = '/login';
+          window.dispatchEvent(new Event('auth-error'));
         }
         return Promise.reject(error);
       }
