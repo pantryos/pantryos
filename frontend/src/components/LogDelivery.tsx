@@ -10,17 +10,17 @@ import {
   MenuItem as MuiMenuItem,
   InputAdornment,
 } from '@mui/material';
-import { InventoryItem, CreateDeliveryRequest } from '../types/api';
+import { InventoryItem, CreateDeliveryRequest } from '@/types/api';
 
-// Define the props the component will accept
 interface LogDeliveryProps {
   open: boolean;
   onClose: () => void;
-  inventoryItems: InventoryItem[];
+  inventoryItems: InventoryItem[]; // The type definition stays the same
   onSubmit: (deliveryData: CreateDeliveryRequest) => Promise<void>;
 }
 
-const LogDelivery: React.FC<LogDeliveryProps> = ({ open, onClose, inventoryItems, onSubmit }) => {
+// ✅ FIX: Added a default empty array for the inventoryItems prop
+const LogDelivery: React.FC<LogDeliveryProps> = ({ open, onClose, inventoryItems = [], onSubmit }) => {
   const [formData, setFormData] = React.useState<CreateDeliveryRequest>({
     inventory_item_id: 0,
     vendor: '',
@@ -30,7 +30,7 @@ const LogDelivery: React.FC<LogDeliveryProps> = ({ open, onClose, inventoryItems
   });
 
   const handleFormChange = (field: keyof CreateDeliveryRequest, value: string | number) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData((prev: CreateDeliveryRequest) => ({ ...prev, [field]: value }));
   };
 
   const handleSubmit = () => {
@@ -58,6 +58,7 @@ const LogDelivery: React.FC<LogDeliveryProps> = ({ open, onClose, inventoryItems
             <MuiMenuItem value={0} disabled>
               <em>Select an item</em>
             </MuiMenuItem>
+            {/* This map call is now safe */}
             {inventoryItems.map((item) => (
               <MuiMenuItem key={item.id} value={item.id}>
                 {item.name}

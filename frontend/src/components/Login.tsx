@@ -20,7 +20,7 @@ const Login: React.FC = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  
+
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -32,7 +32,7 @@ const Login: React.FC = () => {
 
     try {
       await login(email, password);
-      navigate('/dashboard');
+      navigate('/dashboard'); // Redirect to dashboard on success
     } catch (err: any) {
       setError(err.response?.data?.error || 'Login failed. Please try again.');
     } finally {
@@ -42,7 +42,7 @@ const Login: React.FC = () => {
 
   // Navigate to register page
   const handleRegisterClick = () => {
-    navigate('/register');
+    navigate('/auth/register');
   };
 
   return (
@@ -117,19 +117,19 @@ const Login: React.FC = () => {
             >
               {isLoading ? <CircularProgress size={24} /> : 'Sign In'}
             </Button>
-            
-            {/* Register Link */}
-            <Box sx={{ textAlign: 'center' }}>
-              <Link
-                component="button"
-                variant="body2"
-                onClick={handleRegisterClick}
-                disabled={isLoading}
-                sx={{ cursor: 'pointer' }}
-              >
-                Don't have an account? Sign Up
-              </Link>
-            </Box>
+
+          </Box>
+          {/* Register Link */}
+          <Box sx={{ textAlign: 'center' }}>
+            <Link
+              component="button"
+              variant="body2"
+              onClick={handleRegisterClick}
+              disabled={isLoading}
+              sx={{ cursor: 'pointer' }}
+            >
+              Don't have an account? Sign Up
+            </Link>
           </Box>
         </Paper>
       </Box>

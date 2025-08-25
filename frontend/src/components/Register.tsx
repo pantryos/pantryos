@@ -50,7 +50,7 @@ const Register: React.FC = () => {
 
   // Navigate to login page
   const handleLoginClick = () => {
-    navigate('/login');
+    navigate('/auth/login');
   };
 
   return (
