@@ -12,6 +12,7 @@ import {
   UpdateInventoryItemRequest,
   CreateMenuItemRequest,
   CreateDeliveryRequest,
+  ApiResponse,
   StandardAPIResponse,
   Category,
   CreateCategoryRequest,
@@ -26,7 +27,7 @@ class ApiService {
 
   constructor() {
     // Use environment variable or default to localhost
-    this.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+    this.baseURL = import.meta.env.REACT_APP_API_URL || 'http://localhost:8080';
 
     this.api = axios.create({
       baseURL: this.baseURL,
