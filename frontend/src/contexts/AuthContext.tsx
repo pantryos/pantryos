@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '../types/api';
 import apiService from '../services/api';
+import { useNavigate } from 'react-router-dom';
 
 // Interface for the authentication context
 interface AuthContextType {
@@ -22,6 +23,7 @@ interface AuthProviderProps {
 
 // Provider component that wraps the app and makes auth object available to any child component
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+  const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -55,7 +57,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Login function
   const login = async (email: string, password: string) => {
     try {
-      setLoading(true);
       const response = await apiService.login({ email, password });
       apiService.setAuthToken(response.token);
       setUser(response.user);
@@ -64,7 +65,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.error('Login failed:', error);
       throw error;
     } finally {
-      setLoading(false);
     }
   };
 
@@ -88,7 +88,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     apiService.clearAuthToken();
     setUser(null);
+    navigate('/auth/login');
   };
+
+  useEffect(() => {
+    const handleAuthError = () => {
+      logout();
+    };
+
+    window.addEventListener('auth-error', handleAuthError);
+    return () => {
+      window.removeEventListener('auth-error', handleAuthError);
+    };
+  }, []); 
 
   // Value object that will be given to the context
   const value: AuthContextType = {

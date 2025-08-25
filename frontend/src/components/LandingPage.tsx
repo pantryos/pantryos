@@ -94,7 +94,7 @@ const LandingPage: React.FC = () => {
             <Button
               color="inherit"
               startIcon={<Login />}
-              onClick={() => navigate('/login')}
+              onClick={() => navigate('/auth/login')}
               sx={{ textTransform: 'none' }}
             >
               Login
@@ -102,7 +102,7 @@ const LandingPage: React.FC = () => {
             <Button
               variant="contained"
               startIcon={<PersonAdd />}
-              onClick={() => navigate('/register')}
+              onClick={() => navigate('/auth/register')}
               sx={{ textTransform: 'none' }}
             >
               Get Started
@@ -144,7 +144,7 @@ const LandingPage: React.FC = () => {
                 variant="contained"
                 size="large"
                 startIcon={<PersonAdd />}
-                onClick={() => navigate('/register')}
+                onClick={() => navigate('/auth/register')}
                 sx={{ 
                   textTransform: 'none', 
                   px: 4, 
@@ -159,7 +159,7 @@ const LandingPage: React.FC = () => {
                 variant="outlined"
                 size="large"
                 startIcon={<Login />}
-                onClick={() => navigate('/login')}
+                onClick={() => navigate('/auth/login')}
                 sx={{ 
                   textTransform: 'none', 
                   px: 4, 
@@ -332,7 +332,7 @@ const LandingPage: React.FC = () => {
                   variant="contained"
                   size="large"
                   startIcon={<PersonAdd />}
-                  onClick={() => navigate('/register')}
+                  onClick={() => navigate('/auth/register')}
                   sx={{ 
                     textTransform: 'none', 
                     px: 4, 
@@ -346,7 +346,7 @@ const LandingPage: React.FC = () => {
                   variant="outlined"
                   size="large"
                   startIcon={<Login />}
-                  onClick={() => navigate('/login')}
+                  onClick={() => navigate('/auth/login')}
                   sx={{ 
                     textTransform: 'none', 
                     px: 4, 
@@ -386,14 +386,14 @@ const LandingPage: React.FC = () => {
               <Stack direction="row" spacing={3}>
                 <Button
                   color="inherit"
-                  onClick={() => navigate('/login')}
+                  onClick={() => navigate('/auth/login')}
                   sx={{ textTransform: 'none' }}
                 >
                   Login
                 </Button>
                 <Button
                   color="inherit"
-                  onClick={() => navigate('/register')}
+                  onClick={() => navigate('/auth/register')}
                   sx={{ textTransform: 'none' }}
                 >
                   Register

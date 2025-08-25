@@ -27,7 +27,7 @@ class ApiService {
 
   constructor() {
     // Use environment variable or default to localhost
-    this.baseURL = process.env.REACT_APP_API_URL || 'http://198.199.81.24/pantryos';
+    this.baseURL = import.meta.env.REACT_APP_API_URL || 'http://localhost:8080';
 
     this.api = axios.create({
       baseURL: this.baseURL,
@@ -58,7 +58,7 @@ class ApiService {
           // Token expired or invalid, redirect to login
           localStorage.removeItem('token');
           localStorage.removeItem('user');
-          window.location.href = '/login';
+          window.dispatchEvent(new Event('auth-error'));
         }
         return Promise.reject(error);
       }
