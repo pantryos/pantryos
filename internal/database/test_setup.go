@@ -125,6 +125,10 @@ func runTestMigrations(gormDB *gorm.DB, config *TestDBConfig) error {
 		&models.MenuItem{},
 		&models.RecipeIngredient{},
 		&models.InventorySnapshot{},
+		&models.Sale{},
+		&models.SaleItem{},
+		&models.Order{},
+		&models.OrderItem{},
 		&models.Delivery{},
 		&models.AccountInvitation{},
 		&models.EmailSchedule{},
@@ -412,6 +416,9 @@ func createTestInventoryItem(t *testing.T, service *Service, accountID int, name
 		PreferredVendor: "Test Vendor",
 		MinStockLevel:   5.0,
 		MaxStockLevel:   50.0,
+		MinWeeksStock:   2.0,
+		MaxWeeksStock:   8.0,
+		WastageRate:     0.0, // Default to 0% wastage for tests
 	}
 
 	if err := service.CreateInventoryItem(item); err != nil {

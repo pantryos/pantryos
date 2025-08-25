@@ -1,144 +1,28 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { CssBaseline } from '@mui/material';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import Login from './components/Login';
-import Register from './components/Register';
-import Dashboard from './components/Dashboard';
-import Inventory from './components/Inventory';
-import Analytics from './components/Analytics';
-import LandingPage from './components/LandingPage';
-import Menu from './components/Menu';
+import { Suspense } from "react";
+import { useTranslation } from "react-i18next";
+import { BrowserRouter } from "react-router-dom";
 
-import DeliveriesPage from './components/DeliveriesPage';
-import CategoriesPage from './components/CategoriesPage';
+import { Box, StyledEngineProvider } from "@mui/material";
 
-// Create a custom theme for the application
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#1976d2',
-    },
-    secondary: {
-      main: '#dc004e',
-    },
-  },
-  typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-  },
-});
+import BackgroundWrapper from "@/components/layout/containers/background-wrapper";
+import SnackbarWrapper from "@/components/layout/containers/snackbar-wrapper";
+import LayoutContextProvider from "@/components/layout/layout-context";
+import Loading from "@/pages/loading";
+import AppRoutes from "@/routes";
+import ThemeProvider from "@/theme/theme-provider";
+import { AuthProvider } from "./contexts/AuthContext";
+const App = () => {
+  const { i18n } = useTranslation();
 
-// Protected route component that redirects to login if not authenticated
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  return isAuthenticated ? <>{children}</> : <Navigate to="/login" replace />;
-};
-
-// Public route component that redirects to dashboard if already authenticated
-const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
-  console.log(isAuthenticated)
-
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
-  return isAuthenticated ? <Navigate to="/dashboard" replace /> : <>{children}</>;
-};
-
-// Main App component with routing and theme
-const App: React.FC = () => {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
+    <BrowserRouter>
       <AuthProvider>
-        <Router>
-          <Routes>
-            {/* Public routes */}
-            <Route path="/" element={<LandingPage />} />
-            <Route
-              path="/login"
-              element={
-                <PublicRoute>
-                  <Login />
-                </PublicRoute>
-              }
-            />
-            <Route
-              path="/register"
-              element={
-                <PublicRoute>
-                  <Register />
-                </PublicRoute>
-              }
-            />
-
-            {/* Protected routes */}
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/inventory"
-              element={
-                <ProtectedRoute>
-                  <Inventory />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/menu"
-              element={
-                <ProtectedRoute>
-                  <Menu />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/deliveries"
-              element={
-                <ProtectedRoute>
-                  <DeliveriesPage />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/analytics"
-              element={
-                <ProtectedRoute>
-                  <Analytics />
-                </ProtectedRoute>
-              }
-            />
-
-            <Route
-              path="/categories"
-              element={
-                <ProtectedRoute>
-                  <CategoriesPage />
-                </ProtectedRoute>
-              }
-            />
-
-            {/* Catch all route */}
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Router>
+        <Suspense fallback={<Loading />}>
+          {/* Routes */}
+          <AppRoutes />
+        </Suspense>
       </AuthProvider>
-    </ThemeProvider>
+    </BrowserRouter>
   );
 };
 

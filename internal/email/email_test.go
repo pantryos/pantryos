@@ -78,6 +78,9 @@ func TestEmailTemplates(t *testing.T) {
 			Unit:          "kg",
 			CostPerUnit:   15.0,
 			MinStockLevel: 5.0,
+			MinWeeksStock: 2.0,
+			MaxWeeksStock: 8.0,
+			WastageRate:   0.0, // Default to 0% wastage for tests
 		},
 	}
 

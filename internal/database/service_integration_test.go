@@ -450,6 +450,9 @@ func TestInventoryWithOrganization(t *testing.T) {
 			PreferredVendor: "Coffee Supply Co.",
 			MinStockLevel:   10.0,
 			MaxStockLevel:   50.0,
+			MinWeeksStock:   2.0,
+			MaxWeeksStock:   8.0,
+			WastageRate:     0.0, // Default to 0% wastage for tests
 		}
 
 		err = service.CreateInventoryItem(item)
@@ -477,18 +480,27 @@ func TestInventoryWithOrganization(t *testing.T) {
 			Name:          "Coffee Beans",
 			Unit:          "kg",
 			MinStockLevel: 10.0,
+			MinWeeksStock: 2.0,
+			MaxWeeksStock: 8.0,
+			WastageRate:   0.0, // Default to 0% wastage for tests
 		}
 		item2 := &models.InventoryItem{
 			AccountID:     account.ID,
 			Name:          "Milk",
 			Unit:          "liters",
 			MinStockLevel: 5.0,
+			MinWeeksStock: 2.0,
+			MaxWeeksStock: 8.0,
+			WastageRate:   0.0, // Default to 0% wastage for tests
 		}
 		item3 := &models.InventoryItem{
 			AccountID:     account.ID,
 			Name:          "Sugar",
 			Unit:          "kg",
 			MinStockLevel: 0.0, // No min stock level
+			MinWeeksStock: 2.0,
+			MaxWeeksStock: 8.0,
+			WastageRate:   0.0, // Default to 0% wastage for tests
 		}
 
 		err = service.CreateInventoryItem(item1)
