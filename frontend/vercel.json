@@ -1,3 +1,13 @@
+
 {
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    {
+      "source": "/pantryos/(.*)",
+      "destination": "http://198.199.81.24/pantryos/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
 }
