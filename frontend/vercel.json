@@ -2,7 +2,7 @@
 {
   "rewrites": [
     {
-      "source": "/pantryos/(.*)",
+      "source": "/api/(.*)",
       "destination": "http://198.199.81.24/pantryos/$1"
     },
     {
