@@ -5,9 +5,10 @@
 package handlers
 
 import (
-	helpers "github.com/mnadev/pantryos/internal/api/helper"
 	"net/http"
 	"strconv"
+
+	helpers "github.com/mnadev/pantryos/internal/api/helper"
 
 	"github.com/mnadev/pantryos/internal/database"
 	"github.com/mnadev/pantryos/internal/models"
@@ -780,7 +781,7 @@ func (h *InventoryHandler) GetDeliveriesByVendor(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"deliveries": deliveries})
+	helpers.Success(c.Writer, http.StatusOK, "Deliveries by vendor retrieved successfully.", deliveries)
 }
 
 // GetInventoryItemsByVendor godoc
@@ -817,5 +818,5 @@ func (h *InventoryHandler) GetInventoryItemsByVendor(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{"items": items})
+	helpers.Success(c.Writer, http.StatusOK, "Inventory items by vendor retrieved successfully.", items)
 }

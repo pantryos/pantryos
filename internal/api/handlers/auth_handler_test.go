@@ -101,7 +101,7 @@ func TestRegister(t *testing.T) {
 		require.NoError(t, err)
 
 		assert.Contains(t, response, "message")
-		assert.Equal(t, "User registered successfully", response["message"])
+		assert.Equal(t, "User registered successfully.", response["message"])
 	})
 
 	t.Run("Registration without Invitation", func(t *testing.T) {
@@ -123,8 +123,16 @@ func TestRegister(t *testing.T) {
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
+		// --- FIXED ASSERTION ---
+		// 1. Check that the "error" key exists.
 		assert.Contains(t, response, "error")
-		assert.Contains(t, response["error"], "No invitation found")
+
+		// 2. Safely access the nested map and assert its type.
+		errorMap, ok := response["error"].(map[string]interface{})
+		require.True(t, ok, "The value for 'error' should be a map")
+
+		// 3. Assert the 'code' within the nested map.
+		assert.Equal(t, "INVITATION_NOT_FOUND", errorMap["code"])
 	})
 
 	t.Run("Registration with Invalid Email", func(t *testing.T) {
@@ -146,8 +154,11 @@ func TestRegister(t *testing.T) {
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
+		// --- IMPROVED ASSERTION ---
 		assert.Contains(t, response, "error")
-		assert.Contains(t, response["error"], "Invalid request body")
+		errorMap, ok := response["error"].(map[string]interface{})
+		require.True(t, ok, "The value for 'error' should be a map")
+		assert.Equal(t, "INVALID_INPUT", errorMap["code"])
 	})
 
 	t.Run("Registration with Weak Password", func(t *testing.T) {
@@ -169,8 +180,11 @@ func TestRegister(t *testing.T) {
 		err := json.Unmarshal(w.Body.Bytes(), &response)
 		require.NoError(t, err)
 
+		// --- IMPROVED ASSERTION ---
 		assert.Contains(t, response, "error")
-		assert.Contains(t, response["error"], "Invalid request body")
+		errorMap, ok := response["error"].(map[string]interface{})
+		require.True(t, ok, "The value for 'error' should be a map")
+		assert.Equal(t, "INVALID_INPUT", errorMap["code"])
 	})
 }
 
