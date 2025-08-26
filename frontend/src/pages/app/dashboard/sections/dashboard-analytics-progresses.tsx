@@ -20,7 +20,7 @@ export default function DashboardAnalyticsProgresses() {
       </Grid>
       <Grid size={{ lg: 6, xs: 12 }}>
         <Card className="h-24">
-          <CardContent className="flex flex-row items-start justify-between">
+          {/* <CardContent className="flex flex-row items-start justify-between">
             <Box>
               <Typography variant="subtitle2" className="text-text-secondary leading-5 transition-colors">POS Uptime</Typography>
               <Typography variant="h5" className="text-leading-5">Stable</Typography>
@@ -30,7 +30,7 @@ export default function DashboardAnalyticsProgresses() {
               <Box className="absolute top-0 right-0 bottom-0 left-0 flex items-center justify-center"><Typography variant="caption" component="div" className="text-text-secondary">99%</Typography></Box>
               <Box className="outline-grey-100 absolute top-0 right-0 bottom-0 left-0 z-0 rounded-full outline -outline-offset-2"></Box>
             </Box>
-          </CardContent>
+          </CardContent> */}
         </Card>
       </Grid>
       <Grid size={{ lg: 6, xs: 12 }}>
@@ -50,7 +50,7 @@ export default function DashboardAnalyticsProgresses() {
       </Grid>
       <Grid size={{ lg: 6, xs: 12 }}>
         <Card className="h-24">
-          <CardContent className="flex flex-row items-start justify-between">
+          {/* <CardContent className="flex flex-row items-start justify-between">
             <Box>
               <Typography variant="subtitle2" className="text-text-secondary leading-5 transition-colors">Staff on Duty</Typography>
               <Typography variant="h5" className="text-leading-5">4 / 5</Typography>
@@ -60,7 +60,7 @@ export default function DashboardAnalyticsProgresses() {
               <Box className="absolute top-0 right-0 bottom-0 left-0 flex items-center justify-center"><Typography variant="caption" component="div" className="text-text-secondary">80%</Typography></Box>
               <Box className="outline-grey-100 absolute top-0 right-0 bottom-0 left-0 z-0 rounded-full outline -outline-offset-2"></Box>
             </Box>
-          </CardContent>
+          </CardContent> */}
         </Card>
       </Grid>
     </Grid>
