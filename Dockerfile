@@ -7,12 +7,9 @@ RUN go mod download
 
 COPY . .
 
-ENV CGO_ENABLED=0
-RUN go build -o /bin/app -ldflags="-s -w" cmd/server/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -o /bin/app -ldflags="-s -w" ./cmd/server/main.go
 
 FROM gcr.io/distroless/static-debian12:nonroot
-
-WORKDIR /app
 
 COPY --from=builder /bin/app /app/app
 
