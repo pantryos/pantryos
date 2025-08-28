@@ -142,12 +142,13 @@ export default function Page() {
             <DashboardAnalyticsStats />
           </Grid>
           <Grid size={12}>
-            {/* <DashboardAnalyticsSales /> */}
+            
             <DashboardAnalyticsProgresses />
           </Grid>
         </Grid>
         <Grid size={{ lg: 6, xs: 12 }}>
-          <DashboardAnalyticsOrders />
+          {/* <DashboardAnalyticsOrders /> */}
+          <DashboardAnalyticsCategories />
         </Grid>
       </Grid>
 
@@ -155,17 +156,18 @@ export default function Page() {
 
       <Grid container size={12}>
         <Grid size={{ lg: 6, xs: 12 }}>
-          <DashboardAnalyticsCurrencies />
+          {/* <DashboardAnalyticsCurrencies /> */}
+          <DashboardAnalyticsSales />
         </Grid>
         <Grid size={{ lg: 6, xs: 12 }}>
           {/* <DashboardAnalyticsProgresses /> */}
-           <DashboardAnalyticsDuration />
+           {/* <DashboardAnalyticsDuration /> */}
         </Grid>
         <Grid size={{ lg: 3, xs: 12 }}>
-          <DashboardAnalyticsCategories />
+          
         </Grid>
         <Grid size={{ lg: 3, xs: 12 }}>
-          <DashboardAnalyticsOrdersStocks />
+          {/* <DashboardAnalyticsOrdersStocks /> */}
         </Grid>
         <Grid size={{ lg: 6, xs: 12 }}>
           {/* <DashboardAnalyticsAppStatus /> */}
